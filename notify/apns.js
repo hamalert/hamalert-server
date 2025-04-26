@@ -1,4 +1,4 @@
-const apn = require('apn');
+const apn = require('@parse/node-apn');
 const config = require('../config');
 const Notifier = require('./notifier');
 const expand = require('expand-template')();
