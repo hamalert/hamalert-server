@@ -23,6 +23,13 @@ config.wwff = {
 	spotMaxAge: 5*60*1000
 };
 
+config.wwbota = {
+	spotsUrl: 'https://api.wwbota.org/spots/',
+	listUrl: 'https://wwbota.org/wwbota-3',
+	refreshInterval: 60*1000,
+	spotMaxAge: 5*60*1000
+};
+
 config.mongodb = {
 	url: 'mongodb://hamalert:<redacted>@localhost:27017/hamalert',
 	dbName: 'hamalert'
