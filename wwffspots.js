@@ -41,7 +41,7 @@ class WwffSpotReceiver extends EventEmitter {
 				return;
 			}
 
-			if (!Array.isArray(body.RCD)) {
+			if (!body || typeof body !== 'object' || !Array.isArray(body.RCD)) {
 				console.error(`Expected array RCD from WWFFwatch, but got something else`);
 				return;
 			}
