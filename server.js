@@ -21,6 +21,7 @@ const MatcherClient = require('./matcher_client');
 const hamutil = require('./hamutil');
 const MongoClient = require('mongodb').MongoClient;
 const ObjectID = require('mongodb').ObjectID;
+const Redis = require('ioredis');
 const assert = require('assert');
 const clone = require('clone');
 const async = require('async');
@@ -73,6 +74,8 @@ client.connect((err) => {
 		console.log("*** TEST MODE, NO ALERTS WILL BE SENT ***");
 	}
 });
+
+const redis = new Redis(config.redis.server);
 
 
 function startReceivers() {
@@ -284,11 +287,22 @@ function runNotifiers(trigger, spot) {
 }
 
 function saveSpot(trigger, spot) {
+	// Write in MongoDB
 	let dbSpot = clone(spot);
 	dbSpot.user_id = trigger.user._id;
 	dbSpot.actions = trigger.actions;
 	dbSpot.triggerComments = trigger.comment;
 	db.collection('spots').insertOne(dbSpot);
+
+	// Publish in Redis Stream
+	let redisSpot = hamutil.makeSpotParams(spot, trigger.comment, trigger.actions);
+	let args = [];
+	for (let key in redisSpot) {
+		if (redisSpot.hasOwnProperty(key) && redisSpot[key] != null) {
+			args.push(key, String(redisSpot[key]));
+		}
+	}
+	redis.xadd('spots:' + trigger.user._id.toString(), 'MINID', new Date().getTime() - config.redis.spotMaxAge, '*', args);
 }
 
 function saveMySpot(spot) {

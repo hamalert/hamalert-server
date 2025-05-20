@@ -32,7 +32,7 @@ exports.extractCanonicalCallsign = function(fullCallsign) {
 	}
 }
 
-exports.makeSpotParams = function(spot, comment) {
+exports.makeSpotParams = function(spot, comment, actions) {
 	let params = {
 		fullCallsign: spot.fullCallsign,
 		callsign: spot.callsign,
@@ -94,6 +94,10 @@ exports.makeSpotParams = function(spot, comment) {
 	
 	if (comment) {
 		params.triggerComment = comment.join(', ');
+	}
+	
+	if (actions) {
+		params.actions = actions.join(', ');
 	}
 	
 	return params;
