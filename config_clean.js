@@ -71,7 +71,8 @@ config.clublog = {
 config.threema = {
 	apiId: '*HAMALRT',
 	apiSecret: '<redacted>',
-	privateKey: Buffer.from('<redacted>', 'hex')
+	privateKey: Buffer.from('<redacted>', 'hex'),
+	creditsWarningThreshold: 100000
 }
 
 config.mail = {
