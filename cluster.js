@@ -32,11 +32,14 @@ class ClusterReceiver extends EventEmitter {
 		}
 		this.re = reconnect((stream) => {
 			console.log(`Connected to Cluster ${this.config.source} (${server.host}:${server.port})`);
-			stream.write(this.config.login + "\n");
+			if (this.config.login) {
+				stream.write(this.config.login + "\n");
+			}
 			
 			carrier.carry(stream, (line) => {
 				this.handleLine(line);
-			}, "latin1");
+			}, 'latin1');
+			// We're using latin1 here because utf8 causes field widths to shift in the presence of non-ASCII characters
 		})
 		
 		this.re.on('error', (err) => {
@@ -77,11 +80,19 @@ class ClusterReceiver extends EventEmitter {
 			};
 			spot.title = `${this.config.titlePrefix} ${spot.fullCallsign} (${hamutil.formatFrequency(spot.frequency)})`;
 			
-			// Check if we should extract mode and SNR
+			// Check if we should extract specific fields from the comment field on special-purpose clusters
 			if (this.config.modeSnr) {
 				spot.mode = line.substring(39, 52).trim();
 				spot.snr = line.substring(53, 69).trim();
 				delete spot.comment;
+			} else if (this.config.wwffMode) {
+				let fields = spot.comment.split(' ');
+				if (fields.length >= 2) {
+					spot.wwffRefRaw = fields[0];
+					spot.mode = fields[1];
+					spot.comment = Buffer.from(fields.slice(2).join(' '), 'latin1').toString('utf8');
+					spot.title = `${this.config.titlePrefix} ${spot.fullCallsign} in ${spot.wwffRefRaw} (${hamutil.formatFrequency(spot.frequency)} ${spot.mode})`;
+				}
 			}
 			
 			// Check filter

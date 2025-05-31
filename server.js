@@ -1,7 +1,6 @@
 const util = require('util');
 const SotaSpotReceiver = require('./sotaspots');
 const PotaSpotReceiver = require('./potaspots');
-const WwffSpotReceiver = require('./wwffspots');
 const RbnReceiver = require('./rbn');
 const PskReporterReceiver = require('./pskreporter');
 const ClusterReceiver = require('./cluster');
@@ -86,10 +85,6 @@ function startReceivers() {
 	let potaSpotReceiver = new PotaSpotReceiver(db);
 	potaSpotReceiver.on('spot', notifySpot);
 	potaSpotReceiver.start();
-
-	let wwffSpotReceiver = new WwffSpotReceiver(db);
-	wwffSpotReceiver.on('spot', notifySpot);
-	wwffSpotReceiver.start();
 	
 	config.rbn.forEach(rbnConfig => {
 		let rbnReceiver = new RbnReceiver(rbnConfig);
@@ -464,7 +459,7 @@ function findSotaRef(spot, callback) {
 }
 
 function findWwffRef(spot, callback) {
-	// Find a WwFF reference in the spot comment, and populate the wwff fields if 
+	// Find a WWFF reference in the spot comment, and populate the wwff fields if 
 	// a valid reference has been found
 	if (spot.wwffRef) {
 		// Already have a WWFF reference
@@ -472,7 +467,12 @@ function findWwffRef(spot, callback) {
 		return;
 	}
 	
-	let matches = wwffRefRegex.exec(spot.comment);
+	let stringToSearch = spot.comment;
+	if (spot.wwffRefRaw) {
+		stringToSearch = spot.wwffRefRaw;
+		delete spot.wwffRefRaw;
+	}
+	let matches = wwffRefRegex.exec(stringToSearch);
 	if (matches) {
 		let wwffDivision = matches[1].toUpperCase();
 		let wwffNum = matches[2];

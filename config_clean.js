@@ -17,10 +17,7 @@ config.pota = {
 };
 
 config.wwff = {
-	spotsUrl: 'https://www.cqgma.org/api/spots/wwff/',
-	listUrl: 'http://wwff.co/wwff-data/wwff_directory.csv',
-	refreshInterval: 60*1000,
-	spotMaxAge: 5*60*1000
+	listUrl: 'http://wwff.co/wwff-data/wwff_directory.csv'
 };
 
 config.mongodb = {
@@ -73,7 +70,7 @@ config.threema = {
 	apiSecret: '<redacted>',
 	privateKey: Buffer.from('<redacted>', 'hex'),
 	creditsWarningThreshold: 100000
-}
+};
 
 config.mail = {
 	transport: {
@@ -174,18 +171,19 @@ config.cluster = [
 		spotterFilterRegex: /^W3LPL$/i,
 		solardataTargetUrlBase: 'https://sotl.as/api/solardata',
 		solardataApiKey: '<redacted>'
-	}
-	/*{
-		source: 'pskreporter',
-		server: {
-			host: 'dm4x.ddns.net',
-			port: 7555
-		},
-		login: "HB9DQM-4",
+	},
+	{
+		source: 'wwff',
+		servers: [
+			{
+				host: 'spots.wwff.co',
+				port: 7300
+			}
+		],
 		timeout: 300000,
-		modeSnr: true,
-		titlePrefix: "PSK Reporter spot"
-	}*/
+		titlePrefix: 'WWFF',
+		wwffMode: true
+	}
 ];
 
 config.pskreporter = {
