@@ -149,7 +149,7 @@ function runMatcher(spot) {
 		conditions.dxcc = spot.dxcc.dxcc;
 		if (spot.dxcc.cq)  conditions.cq = spot.dxcc.cq;
 		if (spot.dxcc.itu) conditions.itu = spot.dxcc.itu;
-		if (spot.dxcc.itu) conditions.continent = spot.dxcc.continent;
+		if (spot.dxcc.continent) conditions.continent = spot.dxcc.continent;
 	}
 	if (spot.callsignDxcc) {
 		conditions.callsignDxcc = spot.callsignDxcc.dxcc;
