@@ -1,4 +1,4 @@
-const request = require('request');
+const axios = require('axios');
 const config = require('./config');
 const EventEmitter = require('events');
 const util = require('util');
@@ -25,31 +25,26 @@ class PotaSpotReceiver extends EventEmitter {
 	refreshSpots() {
 		console.log("Refreshing POTA JSON feed");
 		
-		let req = request({
+		let req = axios({
 			url: config.pota.spotsUrl,
 			headers: {
 				'User-Agent': 'HamAlert/1.0 (+https://hamalert.org)'
 			},
-			json: true
-		}, (error, response, body) => {
-			if (error) {
-				console.error(`Loading POTA feed failed: ${error}`);
-				return;
-			}
-
-			if (response.statusCode !== 200) {
-				console.error(`Bad status code ${response.statusCode} from POTA`);
-				return;
-			}
-
+			responseType: 'json',
+			method: 'GET'
+		})
+		.then(response => {
+			let body = response.data;
 			if (!Array.isArray(body)) {
 				console.error(`Expected array from POTA, but got something else`);
 				return;
 			}
-			
 			body.forEach(spot => {
 				this.processJsonSpot(spot)
 			});
+		})
+		.catch(error => {
+			console.error(`Loading POTA feed failed: ${error}`);
 		});
 	}
 	

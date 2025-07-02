@@ -1,6 +1,6 @@
 const config = require('../config');
 const Notifier = require('./notifier');
-const request = require('request');
+const axios = require('axios');
 const nacl = require('tweetnacl/nacl-fast');
 
 var threemaIdRegex = /^[A-Z0-9]{8}$/;
@@ -37,21 +37,17 @@ class ThreemaNotifier extends Notifier {
 			sendParams.to = threemaId;
 			sendParams.nonce = Buffer.from(nonce).toString('hex');
 			sendParams.box = Buffer.from(box).toString('hex');
-			request.post({
-				url: "https://msgapi.threema.ch/send_e2e",
-				form: sendParams
-			}, (error, response, body) => {
-				if (error) {
+			axios.post("https://msgapi.threema.ch/send_e2e", sendParams, {headers: {'Content-Type': 'application/x-www-form-urlencoded'}})
+				.then(response => {
+					if (response.status != 200) {
+						console.error(response.data);
+						return;
+					}
+					console.log(`Sent message ID ${response.data} to Threema ID ${threemaId}`);
+				})
+				.catch(error => {
 					console.error(error);
-					return;
-				}
-				if (response.statusCode != 200) {
-					console.error(body);
-					return;
-				}
-				
-				console.log(`Sent message ID ${body} to Threema ID ${threemaId}`);
-			});
+				});
 		});
 	}
 	
@@ -68,25 +64,21 @@ class ThreemaNotifier extends Notifier {
 			return;
 		}
 		
-		request.get({
-			url: "https://msgapi.threema.ch/pubkeys/" + threemaId,
-			qs: this.authParams()
-		}, (error, response, body) => {
-			if (error) {
+		axios.get("https://msgapi.threema.ch/pubkeys/" + threemaId, {params: this.authParams(), responseType: 'text'})
+			.then(response => {
+				if (response.status != 200) {
+					console.error(response);
+					callback(null);
+					return;
+				}
+				var publicKey = Buffer.from(response.data, 'hex');
+				this.publicKeyCache.set(threemaId, publicKey);
+				callback(publicKey);
+			})
+			.catch(error => {
 				console.error(error);
 				callback(null);
-				return;
-			}
-			if (response.statusCode != 200) {
-				console.error(response);
-				callback(null);
-				return;
-			}
-			
-			var publicKey = Buffer.from(body, 'hex');
-			this.publicKeyCache.set(threemaId, publicKey);
-			callback(publicKey);
-		});
+			});
 	}
 	
 	authParams() {

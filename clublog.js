@@ -1,4 +1,4 @@
-const request = require('request');
+const axios = require('axios');
 const fs = require('fs');
 const config = require('./config');
 const LRU = require('lru-cache');
@@ -61,33 +61,22 @@ class ClubLogResolver {
 		console.log(`Performing Club Log lookup for ${callsign}`);
 		pendingLookup = [];
 		this.pending.set(callsign, pendingLookup);
-		request.get({
-			url: 'https://clublog.org/dxcc',
-			qs: {
+		axios.get('https://clublog.org/dxcc', {
+			params: {
 				call: callsign,
 				api: config.clublog.apiKey,
 				full: 1
-			}		
-		}, (err, response, body) => {
-			
+			}
+		})
+		.then(response => {
+			let body = response.data;
 			let doCallback = (result) => {
 				this.pending.delete(callsign);
 				callback(result);
 				pendingLookup.forEach((callback) => callback(result));
 			}
-			
-			if (err !== null) {
-				console.error(`Club Log lookup failed: ${err}`);
-				return doCallback(null);
-			}
-		
-			if (response.statusCode != 200) {
-				console.log(`Club Log lookup returned status code ${response.statusCode}`);
-				return doCallback(null);
-			}
-			
 			try {
-				let clublogResponse = JSON.parse(body);
+				let clublogResponse = body;
 				if (!clublogResponse.DXCC) {
 					console.error(`No DXCC returned from Club Log for ${callsign}`);
 					this.cache.set(callsign, null);
@@ -121,6 +110,15 @@ class ClubLogResolver {
 				console.error(e);
 				return doCallback(null);
 			}
+		})
+		.catch(err => {
+			console.error(`Club Log lookup failed: ${err}`);
+			let doCallback = (result) => {
+				this.pending.delete(callsign);
+				callback(result);
+				pendingLookup.forEach((callback) => callback(result));
+			}
+			doCallback(null);
 		});
 	}
 	

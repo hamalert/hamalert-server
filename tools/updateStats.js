@@ -1,4 +1,3 @@
-const request = require('request');
 const MongoClient = require('mongodb').MongoClient;
 const config = require('../config');
 const assert = require('assert');

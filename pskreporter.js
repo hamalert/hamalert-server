@@ -1,7 +1,7 @@
 const config = require('./config');
 const hamutil = require('./hamutil');
 const EventEmitter = require('events');
-const request = require('request');
+const axios = require('axios');
 const ndjson = require('ndjson');
 const sprintf = require('sprintf-js').sprintf;
 const TTLCache = require('@isaacs/ttlcache');
@@ -17,24 +17,36 @@ class PskReporterReceiver extends EventEmitter {
 	}
 	
 	restartConnection() {
-		if (this.curRequest) {
-			this.curRequest.abort();
+		if (this.abortController) {
+			this.abortController.abort();
 		}
-		
+		this.abortController = new AbortController();
 		this.resetTimer();
-		this.curRequest = request({url: config.pskreporter.url, timeout: config.pskreporter.timeout});
-		
-		this.curRequest
-			.on('error', (err) => {
-				console.error(`PSK Reporter: connection error (${err}), reconnecting`);
-				setTimeout(() => {
-					this.restartConnection();
-				}, 5000);
-			})
-			.pipe(ndjson.parse({strict: false}))
-			.on('data', (obj) => {
-				this.processSpot(obj);
-			})
+		axios({
+			url: config.pskreporter.url,
+			timeout: config.pskreporter.timeout,
+			responseType: 'stream',
+			signal: this.abortController.signal
+		})
+		.then(response => {
+			response.data
+				.on('error', (err) => {
+					console.error(`PSK Reporter: connection error (${err}), reconnecting`);
+					setTimeout(() => {
+						this.restartConnection();
+					}, 5000);
+				})
+				.pipe(ndjson.parse({strict: false}))
+				.on('data', (obj) => {
+					this.processSpot(obj);
+				});
+		})
+		.catch(err => {
+			console.error(`PSK Reporter: connection error (${err}), reconnecting`);
+			setTimeout(() => {
+				this.restartConnection();
+			}, 5000);
+		});
 	}
 	
 	resetTimer() {

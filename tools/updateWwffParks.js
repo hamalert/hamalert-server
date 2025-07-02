@@ -1,4 +1,3 @@
-const request = require('request');
 const axios = require('axios');
 const MongoClient = require('mongodb').MongoClient;
 const config = require('../config');
@@ -22,28 +21,26 @@ function processParksList(db) {
 	async.series([
 		// WWFF
 		(callback) => {
-			request.get(config.wwff.listUrl, {headers: {'User-Agent': 'Mozilla'}})
-				.on('error', (err) => {
-					callback(err);
-					return;
-				})
-				.pipe(parse({columns: true, relax_column_count: true, relax: true}, (err, newParks) => {
-					assert.equal(err, null);
-					
-					if (newParks.length < 30000) {
-						callback(new Error("Bad number of WWFF parks, expecting more than 30000"));
-						return;
-					}
-					
-					let seenParkRefs = new Set();
-					for (let park of newParks) {
+			axios({
+				url: config.wwff.listUrl,
+				method: 'GET',
+				headers: {'User-Agent': 'Mozilla'},
+				responseType: 'stream'
+			})
+			.then(response => {
+				let seenParkRefs = new Set();
+				let count = 0;
+				response.data
+					.pipe(parse({columns: true, relax_column_count: true, relax: true}))
+					.on('data', (park) => {
+						count++;
 						if (park.reference === 'reference') {
 							// Skip stray CSV header mid-file
-							continue;
+							return;
 						}
 						if (seenParkRefs.has(park.reference)) {
 							//console.log(`Duplicate WWFF reference ${park.reference}`);
-							continue;
+							return;
 						}
 						seenParkRefs.add(park.reference);
 
@@ -65,10 +62,21 @@ function processParksList(db) {
 						
 						park.program = 'wwff';
 						parks.push(park);
-					}
-					
-					callback();
-				}));
+					})
+					.on('end', () => {
+						if (count < 30000) {
+							callback(new Error("Bad number of WWFF parks, expecting more than 30000"));
+							return;
+						}
+						callback();
+					})
+					.on('error', (err) => {
+						callback(err);
+					});
+			})
+			.catch(error => {
+				callback(error);
+			});
 		},
 		
 		// POTA

@@ -1,4 +1,3 @@
-const request = require('request');
 const MongoClient = require('mongodb').MongoClient;
 const config = require('../config');
 const assert = require('assert');
@@ -6,7 +5,7 @@ const parse = require('csv-parse');
 const fs = require('fs');
 const unzipper = require('unzipper');
 const Transform = require('stream').Transform;
-const util = require('util');
+const axios = require('axios');
 
 const BULK_WRITE_SIZE = 1024;
 
@@ -72,49 +71,59 @@ function processFccDatabase(db) {
 }
 
 function processCanadaDatabase(db) {
-	request.get(config.state.canadaDatabaseUrl)
-		.on('error', err => {
-			console.error(err);
-			client2.close();
-			return;
-		})
-		.pipe(unzipper.Parse())
-		.on('entry', entry => {
-			if (entry.path == 'amateur_delim.txt') {
-				let parser = parse({delimiter: ';', quote: null});
-				parser.on('error', err => {
-					console.error(err);
-					client2.close();
-				})
-				let myTransform = new Transform({
-					transform(chunk, encoding, cb) {
-						if (!chunk[5]) {
-							cb();
-							return;
-						}
-						bulkOperations.push({
-							updateOne: {
-								filter: {callsign: chunk[0]},
-								update: { $set: { state: 'CA_' + chunk[5].toUpperCase() } },
-								upsert: true
+	axios({
+		url: config.state.canadaDatabaseUrl,
+		responseType: 'stream',
+		method: 'GET'
+	})
+	.then(response => {
+		response.data
+			.on('error', err => {
+				console.error(err);
+				client2.close();
+				return;
+			})
+			.pipe(unzipper.Parse())
+			.on('entry', entry => {
+				if (entry.path == 'amateur_delim.txt') {
+					let parser = parse({delimiter: ';', quote: null});
+					parser.on('error', err => {
+						console.error(err);
+						client2.close();
+					})
+					let myTransform = new Transform({
+						transform(chunk, encoding, cb) {
+							if (!chunk[5]) {
+								cb();
+								return;
 							}
-						});
-						flushBulkOperations(db, false, cb);
-					},
-					flush(cb) {
-						flushBulkOperations(db, true, () => {
-							client2.close();
-							cb();
-						});
-					},
-					objectMode: true
-				});
-
-				entry.pipe(parser).pipe(myTransform);
-			} else {
-				entry.autodrain();
-			}
-		})
+							bulkOperations.push({
+								updateOne: {
+									filter: {callsign: chunk[0]},
+									update: { $set: { state: 'CA_' + chunk[5].toUpperCase() } },
+									upsert: true
+								}
+							});
+							flushBulkOperations(db, false, cb);
+						},
+						flush(cb) {
+							flushBulkOperations(db, true, () => {
+								client2.close();
+								cb();
+							});
+						},
+						objectMode: true
+					});
+					entry.pipe(parser).pipe(myTransform);
+				} else {
+					entry.autodrain();
+				}
+			});
+	})
+	.catch(err => {
+		console.error(err);
+		client2.close();
+	});
 }
 
 function flushBulkOperations(db, force, cb) {

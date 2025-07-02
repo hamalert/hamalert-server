@@ -1,4 +1,4 @@
-const request = require('request');
+const axios = require('axios');
 const MongoClient = require('mongodb').MongoClient;
 const config = require('../config');
 const assert = require('assert');
@@ -25,16 +25,17 @@ function processSummitList(db) {
 	
 	async.series([
 		cb => {
-			request(config.gma.summitListUrl, (error, response, mbody) => {
-				assert.equal(error, null);
-		
-				body = mbody.substring(mbody.indexOf("\n")+1, mbody.length);
-		
-				// Fix anomaly
-				body = body.replace('"Oberfeld  "Edwinshoehe""', '"Oberfeld Edwinshoehe"');
-		
-				cb();
-			});
+			axios.get(config.gma.summitListUrl, {responseType: 'text'})
+				.then(response => {
+					body = response.data.substring(response.data.indexOf("\n")+1, response.data.length);
+					// Fix anomaly
+					body = body.replace('"Oberfeld  "Edwinshoehe""', '"Oberfeld Edwinshoehe"');
+					cb();
+				})
+				.catch(error => {
+					assert.equal(error, null);
+					cb();
+				});
 		},
 		
 		cb => {

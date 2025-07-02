@@ -393,7 +393,7 @@ config.eqsl = {
 config.state = {
 	//fccDatabaseUrl: 'ftp://wirelessftp.fcc.gov/pub/uls/complete/l_amat.zip'
 	fccDatabasePath: '/data/hamalert/download/l_amat.zip',
-	canadaDatabaseUrl: 'http://apc-cap.ic.gc.ca/datafiles/amateur_delim.zip'
+	canadaDatabaseUrl: 'https://apc-cap.ic.gc.ca/datafiles/amateur_delim.zip'
 };
 
 config.telnetsrv = {

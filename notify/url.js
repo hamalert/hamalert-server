@@ -1,6 +1,6 @@
 const config = require('../config');
 const Notifier = require('./notifier');
-const request = require('request');
+const axios = require('axios');
 const hamutil = require('../hamutil');
 
 /* URL parameters (GET or POST):
@@ -39,26 +39,28 @@ class URLNotifier extends Notifier {
 	}
 	
 	sendURLNotification(user, params) {
-		let options = {
+		let axiosConfig = {
 			url: user.notificationUrl,
-			method: (user.notificationMethod === 'POST-JSON' ? 'POST' : user.notificationMethod)
+			method: (user.notificationMethod === 'POST-JSON' ? 'POST' : user.notificationMethod),
+			headers: {
+				'User-Agent': 'HamAlert/1.0 (+https://hamalert.org)'
+			}
 		};
-		
 		if (user.notificationMethod === 'GET') {
-			options.qs = params;
+			axiosConfig.params = params;
 		} else if (user.notificationMethod === 'POST') {
-			options.form = params;
+			axiosConfig.headers = {'Content-Type': 'application/x-www-form-urlencoded'};
+			axiosConfig.data = params;
 		} else if (user.notificationMethod === 'POST-JSON') {
-			options.json = params;
+			axiosConfig.headers = {'Content-Type': 'application/json'};
+			axiosConfig.data = params;
 		} else {
 			console.error(`Unknown URL notification method ${user.notificationMethod}`);
 		}
-		
-		request(options, (error, response, body) => {
-			if (error) {
+		axios(axiosConfig)
+			.catch(error => {
 				console.error(`Notification to URL ${user.notificationUrl} failed: ${error}`);
-			}
-		});
+			});
 	}
 }
 
