@@ -83,9 +83,9 @@ class TelnetConnection extends EventEmitter {
 					break;
 				}
 
-				matches = line.match(/^sh(?:ow)?\/(?:my)?dx[ /](.+)$/i);
+				matches = line.match(/^sh(?:ow)?\/(?:my)?dx(?:[ /](.+))?$/i);
 				if (matches) {
-					this.db.collection('spots').find({user_id: this.user._id, receivedDate: {$gte: new Date(new Date().getTime() - 3600000)}}).sort({receivedDate: -1}).limit(parseInt(matches[1])).toArray()
+					this.db.collection('spots').find({user_id: this.user._id, receivedDate: {$gte: new Date(new Date().getTime() - 3600000)}, actions: 'telnet'}).sort({receivedDate: -1}).limit(parseInt(matches[1] ?? 20)).toArray()
 						.then(spots => {
 							if (spots.length == 0) {
 								this.socket.write('No spots\r\n')
