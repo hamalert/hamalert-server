@@ -83,7 +83,8 @@ class PskReporterReceiver extends EventEmitter {
 
 		if (rawSpot.receiverCallsign == 'ANALYSIS' || rawSpot.receiverCallsign == 'HERMES-LITE' ||
 			rawSpot.receiverCallsign == 'ZL2/SWL/KYH' || rawSpot.receiverCallsign == 'MY1SQL' ||
-			rawSpot.receiverCallsign == 'DM07SWL' || rawSpot.receiverCallsign == 'WESSEXSDR3') {
+			rawSpot.receiverCallsign == 'DM07SWL' || rawSpot.receiverCallsign == 'WESSEXSDR3' ||
+			rawSpot.receiverCallsign == 'KFS/OMNI') {
 			return;	// ignore these SWLs or we will erroneously identify the spotter DXCC
 		}
 
