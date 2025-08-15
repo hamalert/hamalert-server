@@ -392,7 +392,7 @@ function normalizeSpot(spot, callback) {
 		
 		// Find spotter DXCC
 		(callback) => {
-			if (spot.spotter) {
+			if (spot.spotter && !spot.noSpotterDxccLookup) {
 				clubLogResolver.lookup(spot.spotter, (spotterDxcc) => {
 					if (spotterDxcc)
 						spot.spotterDxcc = spotterDxcc;
@@ -547,7 +547,7 @@ function findCallsignInfo(spot, callback) {
 			}
 		}
 
-		if (spot.spotter) {
+		if (spot.spotter && !spot.noSpotterDxccLookup) {
 			// Strip some common non-location-modifying suffixes for callsign lookup
 			let cleanSpotterCallsign = spot.spotter.replace(/\/(QRP|SDR)$/i, '');
 

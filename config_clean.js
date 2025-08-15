@@ -25,6 +25,15 @@ config.mongodb = {
 	dbName: 'hamalert'
 };
 
+config.redis = {
+	server: {
+		port: 6379,
+		host: '127.0.0.1',
+		db: 0
+	},
+	spotMaxAge: 86400*1000
+};
+
 config.rateLimit = {
 	dumpFile: '/data/hamalert/cache/ratelimit.dump',
 	maxFrequencyDiff: 0.0004,
@@ -192,7 +201,8 @@ config.pskreporter = {
 	maxAge: 900000,
 	quorum: 3,	// how many different spotters must see a call/band/mode combination before spots are deemed valid
 	quorumInterval: 15*60*1000,
-	disabled: false
+	disabled: false,
+	spotterFilterRegex: /^(([A-Z]{1,2}[0-9]?|[0-9][A-Z])\/)?([A-Z]{1,2}|[0-9][A-Z])[0-9]{1,2}[A-Z]{1,3}(\/(M|P|QRP|[0-9]))?(-[0-9])?$/i
 };
 
 config.simulator = {

@@ -81,13 +81,6 @@ class PskReporterReceiver extends EventEmitter {
 			rawSpot.mode = 'OLIVIA';
 		}
 
-		if (rawSpot.receiverCallsign == 'ANALYSIS' || rawSpot.receiverCallsign == 'HERMES-LITE' ||
-			rawSpot.receiverCallsign == 'ZL2/SWL/KYH' || rawSpot.receiverCallsign == 'MY1SQL' ||
-			rawSpot.receiverCallsign == 'DM07SWL' || rawSpot.receiverCallsign == 'WESSEXSDR3' ||
-			rawSpot.receiverCallsign == 'KFS/OMNI') {
-			return;	// ignore these SWLs or we will erroneously identify the spotter DXCC
-		}
-
 		if (rawSpot.receiverDecoderSoftware && rawSpot.receiverDecoderSoftware.includes('N1DQ-Importer-KA9Q-Radio')) {
 			return; // ignore these as they will usually have made-up spotter calls with strange suffixes
 		}
@@ -129,6 +122,11 @@ class PskReporterReceiver extends EventEmitter {
 		}
 		
 		spot.title = `PSK Reporter spot ${spot.fullCallsign} (${hamutil.formatFrequency(spot.frequency)} ${spot.mode})`;
+
+		if (!config.pskreporter.spotterFilterRegex.test(rawSpot.receiverCallsign)) {
+			console.log(`DXCC lookup blocked for spotter callsign ${rawSpot.receiverCallsign}`);
+			spot.noSpotterDxccLookup = true;
+		}
 		
 		this.checkQuorumAndEmit(spot);
 	}
