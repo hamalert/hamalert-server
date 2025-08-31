@@ -21,10 +21,8 @@ config.wwff = {
 };
 
 config.wwbota = {
-	spotsUrl: 'https://api.wwbota.org/spots/',
+	spotsUrl: 'https://api.wwbota.org/spots/?age=0',
 	listUrl: 'https://wwbota.org/wwbota-3',
-	refreshInterval: 60*1000,
-	spotMaxAge: 5*60*1000
 };
 
 config.mongodb = {

@@ -1,8 +1,6 @@
-const request = require('request');
+const eventsource = require('eventsource');
 const config = require('./config');
 const EventEmitter = require('events');
-const util = require('util');
-const crypto = require('crypto');
 const sprintf = require('sprintf');
 
 class WwbotaSpotReceiver extends EventEmitter {
@@ -13,62 +11,26 @@ class WwbotaSpotReceiver extends EventEmitter {
 	}
 	
 	start() {
-		setInterval(() => {
-			this.refreshSpots();
-		}, config.wwbota.refreshInterval);
-		this.refreshSpots();
-	}
-	
-	refreshSpots() {
-		console.log("Refreshing WWBOTA JSON feed");
-		
-		let req = request({
-			url: config.wwbota.spotsUrl,
-			headers: {
-				'User-Agent': 'HamAlert/1.0 (+https://hamalert.org)'
-			},
-			json: true
-		}, (error, response, body) => {
-			if (error) {
-				console.error(`Loading WWBOTA feed failed: ${error}`);
-				return;
-			}
-
-			if (response.statusCode !== 200) {
-				console.error(`Bad status code ${response.statusCode} from WWBOTA`);
-				return;
-			}
-
-			if (!Array.isArray(body)) {
-				console.error(`Expected array from WWBOTA, but got something else`);
-				return;
-			}
-			
-			// reverse to process oldest to newest
-			body.reverse()
-			body.forEach(spot => {
-				this.processJsonSpot(spot)
-			});
-			if (body.length > 0) {
-				this.lastProcessedTime = spot[body.length - 1].time;  // Previously reversed, so newest last
-			}
+		let es = new eventsource.EventSource(config.wwbota.spotsUrl,{
+			fetch: (input, init) =>
+				fetch(input, {
+				...init,
+				headers: {
+					...init.headers,
+					'User-Agent': 'HamAlert/1.0 (+https://hamalert.org)',
+				},
+				}),
 		});
+		es.addEventListener('message', (event) => this.processSpotEvent(event));
+		es.addEventListener('error', (error) => {
+			console.error(`Loading WWBOTA feed failed: ${error.responseCode}`)
+		})
 	}
 	
-	processJsonSpot(jsonSpot) {
+	processSpotEvent(spotEvent) {
 		try {
+			let jsonSpot = JSON.parse(spotEvent.data);
 			jsonSpot.time = new Date(jsonSpot.time);
-			
-			// Check if spot newer that last batch processed
-			// edited spot have new timestamp as well
-			if (this.lastProcessedTime && this.lastProcessedTime >= jsonSpot.time) {
-				return;
-			}
-			
-			// Ignore old spots
-			if ((new Date() - jsonSpot.spotTime) > config.wwbota.spotMaxAge) {
-				return;
-			}
 
 			// Ignore QRT/Test spots
 			if (jsonSpot.type !== "Live") {
@@ -88,9 +50,9 @@ class WwbotaSpotReceiver extends EventEmitter {
 				source: 'wwbota',
 				time: jsonSpot.time.toISOString().substring(11, 16),
 				fullCallsign: jsonSpot.call,
-				wwbotaScheme: spot.reference[0].scheme, // Multiple, but lets just take the first.
-				wwbotaRef: spot.reference[0].reference,
-				wwbotaName: spot.reference[0].name,
+				wwbotaScheme: jsonSpot.references[0].scheme, // Multiple, but lets just take the first.
+				wwbotaRef: jsonSpot.references[0].reference,
+				wwbotaName: jsonSpot.references[0].name,
 				frequency,
 				mode: jsonSpot.mode.toLowerCase().trim(),
 				comment: jsonSpot.comment.trim(),
