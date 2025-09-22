@@ -73,10 +73,6 @@ class PskReporterReceiver extends EventEmitter {
 			return;	// ignore CW spots from PSK reporter; RBN is good enough
 		}
 
-		if (rawSpot.mode == 'JS8') {
-			rawSpot.mode = 'JS8Call';
-		}
-
 		if (rawSpot.mode.startsWith('OLIVIA')) {
 			rawSpot.mode = 'OLIVIA';
 		}
