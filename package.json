@@ -8,7 +8,7 @@
     "@parse/node-apn": "^6.5.0",
     "async": "^2.6.3",
     "async-exit-hook": "^1.1.2",
-    "axios": "^1.11.0",
+    "axios": "^1.12.2",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.19.0",
     "carrier": "^0.3.0",
