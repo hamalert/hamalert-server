@@ -52,6 +52,8 @@ async function updateBandslotsForTrigger(db, dxccIds, trigger) {
 	let desiredQslStatus = trigger.options.clublog.status.map((status) => {
 		return config.clublog.qslStatusValues[status];
 	});
+
+	let date = trigger.options.clublog.date ?? 0;
 	
 	let agent = new https.Agent(/*{ family: 6 }*/);
 	let response = await axios.get('https://clublog.org/json_dxccchart.php', {
@@ -60,7 +62,8 @@ async function updateBandslotsForTrigger(db, dxccIds, trigger) {
 			password: user.clublog.password,
 			call: trigger.options.clublog.callsign,
 			api: config.clublog.apiKey,
-			mode: mode
+			mode,
+			date
 		},
 		httpsAgent: agent,
 		validateStatus: null
