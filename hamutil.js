@@ -57,6 +57,9 @@ exports.makeSpotParams = function(spot, comment, actions) {
 		wwffRef: spot.wwffRef,
 		wwffDivision: spot.wwffDivision,
 		wwffName: spot.wwffName,
+		wwbotaRef: spot.wwbotaRef,
+		wwbotaScheme: spot.wwbotaScheme,
+		wwbotaName: spot.wwbotaName,
 		iotaGroupRef: spot.iotaGroupRef,
 		iotaGroupName: spot.iotaGroupName
 	};
