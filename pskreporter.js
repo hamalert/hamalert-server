@@ -5,6 +5,7 @@ const axios = require('axios');
 const ndjson = require('ndjson');
 const sprintf = require('sprintf-js').sprintf;
 const TTLCache = require('@isaacs/ttlcache');
+const https = require('https');
 
 class PskReporterReceiver extends EventEmitter {
 	start() {
@@ -26,7 +27,8 @@ class PskReporterReceiver extends EventEmitter {
 			url: config.pskreporter.url,
 			timeout: config.pskreporter.timeout,
 			responseType: 'stream',
-			signal: this.abortController.signal
+			signal: this.abortController.signal,
+			httpsAgent: new https.Agent({ keepAlive: false })
 		})
 		.then(response => {
 			response.data
