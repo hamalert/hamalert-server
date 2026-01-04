@@ -122,7 +122,7 @@ function makeDesiredBandList(trigger) {
 	}
 	
 	desiredBands = desiredBands.map((band) => {
-		return band.replace(/[^0-9]/, "");
+		return band.replace(/[^0-9]/g, "");
 	});
 	
 	return desiredBands;
