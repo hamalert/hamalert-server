@@ -38,7 +38,7 @@ config.rateLimit = {
 	dumpFile: '/data/hamalert/cache/ratelimit.dump',
 	maxFrequencyDiff: 0.0004,
 	maxFrequencyDiffDigi: 0.003,
-	digiModes: ['psk', 'rtty', 'jt', 'msk', 'ft8', 'ft4', 'js8', 'qra64', 'iscat', 'fsk441', 't10', 'q65', 'sstv', 'varac', 'olivia', 'fst4']
+	digiModes: ['psk', 'rtty', 'jt', 'msk', 'ft2', 'ft4', 'ft8', 'js8', 'qra64', 'iscat', 'fsk441', 't10', 'q65', 'sstv', 'varac', 'olivia', 'fst4']
 };
 
 config.limitLog = {
@@ -379,7 +379,7 @@ config.modeguesser = {
 		{from: 10489.650, to: 10489.744, mode: 'ssb'}, // QO-100
 		{from: 10489.755, to: 10489.849, mode: 'ssb'}  // QO-100
 	],
-	commentPattern: /\b(psk\d*|rtty|jt65|jt9|msk\d*|ft4|ft8|js8|qra64|iscat|fsk441|t10|sstv|varac|olivia|fst4)\b/i
+	commentPattern: /\b(psk\d*|rtty|jt65|jt9|msk\d*|ft[248]|js8|qra64|iscat|fsk441|t10|sstv|varac|olivia|fst4)\b/i
 };
 
 config.accountPruning = {
