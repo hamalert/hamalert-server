@@ -125,7 +125,15 @@ class EmailNotifier extends Notifier {
 				text += `Park name:     ${spot.wwffName}\n`;
 			}
 		}
-		
+
+		if (spot.wwtotaRef) {
+			text += "\n";
+			text += `Tower ref:      ${spot.wwtotaRef}\n`;
+			if (spot.wwtotaName) {
+				text += `Tower name:     ${spot.wwtotaName}\n`;
+			}
+		}
+
 		if (spot.iotaGroupRef) {
 			text += "\n";
 			text += `IOTA ref:      ${spot.iotaGroupRef}\n`;
