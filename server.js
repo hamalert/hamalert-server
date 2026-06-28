@@ -1,6 +1,7 @@
 const util = require('util');
 const SotaSpotReceiver = require('./sotaspots');
 const PotaSpotReceiver = require('./potaspots');
+const WwtotaSpotReceiver = require('./wwtotaspots');
 const RbnReceiver = require('./rbn');
 const PskReporterReceiver = require('./pskreporter');
 const ClusterReceiver = require('./cluster');
@@ -30,6 +31,7 @@ const config = require('./config');
 const summitRefRegex = /([a-zA-Z0-9]{1,8}\/[a-zA-Z]{2})\-?((?:[0-9][0-9][1-9])|(?:[0-9][1-9][0])|(?:[1-9][0-9][0]))/;
 const sotaRefRegex = /^(.+)\/(.+)\-(\d+)$/;
 const wwffRefRegex = /\b([a-z0-9]{1,5})-(\d{4})\b/i;
+const wwtotaRefRegex = /\b([a-z]{3})-(\d{4})\b/i;
 const iotaRefRegex = /(?:^|\s)(AF|AN|AS|EU|NA|OC|SA)[ -]?(\d{3})\b/i;
 const potaLocationStateRegex = /^((US|CA)-..,?)+$/;
 
@@ -85,7 +87,11 @@ function startReceivers() {
 	let potaSpotReceiver = new PotaSpotReceiver(db);
 	potaSpotReceiver.on('spot', notifySpot);
 	potaSpotReceiver.start();
-	
+
+	let wwtotaSpotReceiver = new WwtotaSpotReceiver(db);
+	wwtotaSpotReceiver.on('spot', notifySpot);
+	wwtotaSpotReceiver.start();
+
 	config.rbn.forEach(rbnConfig => {
 		let rbnReceiver = new RbnReceiver(rbnConfig);
 		rbnReceiver.on('spot', notifySpot);
@@ -136,7 +142,7 @@ function runMatcher(spot) {
 	// Find matching triggers using matcher via JSON-RPC
 	let conditions = {};
 	
-	let fields = ['source', 'callsign', 'fullCallsign', 'summitAssociation', 'summitRegion', 'summitPoints', 'summitActivations', 'summitRef', 'wwffRef', 'iotaGroupRef', 'mode', 'time', 'spotter', 'state', 'spotterState', 'qsl', 'prefix', 'spotterPrefix', 'speed', 'snr'];
+	let fields = ['source', 'callsign', 'fullCallsign', 'summitAssociation', 'summitRegion', 'summitPoints', 'summitActivations', 'summitRef', 'wwffRef', 'wwtotaRef', 'iotaGroupRef', 'mode', 'time', 'spotter', 'state', 'spotterState', 'qsl', 'prefix', 'spotterPrefix', 'speed', 'snr'];
 	for (let field of fields) {
 		if (spot[field] !== undefined) {
 			conditions[field] = spot[field];
@@ -163,7 +169,11 @@ function runMatcher(spot) {
 	if (spot.wwffDivision) {
 		conditions.wwffDivision = [spot.wwffDivision, "*"];
 	}
-	
+
+	if (spot.wwtotaRef) {
+		conditions.wwtotaRef = [spot.wwtotaRef, "*"];
+	}
+
 	if (spot.iotaGroupRef) {
 		conditions.iotaGroupRef = [spot.iotaGroupRef, "*"];
 	}
@@ -418,6 +428,11 @@ function normalizeSpot(spot, callback) {
 			findIotaGroupRef(spot, callback);
 		},
 
+		// Find WWTOTA ref
+		(callback) => {
+			findWwtotaRef(spot, callback);
+		},
+
 		// Find callsign info
 		(callback) => {
 			findCallsignInfo(spot, callback);
@@ -525,6 +540,34 @@ function findIotaGroupRef(spot, callback) {
 				console.info(`IOTA group reference ${iotaGroupRef} not found in database`);
 			}
 			
+			callback();
+		});
+	} else {
+		callback();
+	}
+}
+
+function findWwtotaRef(spot, callback) {
+	// Find a WWTOTA reference in the spot comment, and populate the WWTOTA fields if
+	// a valid reference has been found
+	if (spot.wwtotaRef) {
+		// Already have a WWTOTA reference
+		callback();
+		return;
+	}
+
+	let matches = wwtotaRefRegex.exec(spot.rawText);
+	if (matches) {
+		// Look up tower ref in database to be sure
+		let towerRef = matches[1].toUpperCase() + '-' + matches[2];
+		db.collection('wwtotaTowers').findOne({Ref: towerRef}, {}, (err, tower) => {
+			if (tower) {
+				spot.wwtotaRef = towerRef;
+				spot.wwtotaName = tower.Name;
+			} else {
+				console.info(`Tower ${towerRef} not found in database`);
+			}
+
 			callback();
 		});
 	} else {

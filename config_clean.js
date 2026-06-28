@@ -20,6 +20,14 @@ config.wwff = {
 	listUrl: 'http://wwff.co/wwff-data/wwff_directory.csv'
 };
 
+config.wwtota = {
+	apiKey: '<redacted>',
+	spotsUrl: 'https://wwtota.com/apidata/cluster.php',
+	listUrl: 'https://wwtota.com/apidata/tower.php',
+	refreshInterval: 60*1000,
+	spotMaxAge: 5*60*1000
+};
+
 config.mongodb = {
 	url: 'mongodb://hamalert:<redacted>@localhost:27017/hamalert',
 	dbName: 'hamalert'
@@ -292,6 +300,7 @@ config.matcher = {
 		'summitRegion',
 		'summitRef',
 		'wwffRef',
+		'wwtotaRef',
 		'mode',
 		'band',
 		'spotter',
@@ -327,6 +336,7 @@ config.matcher = {
 		'summitRegion',
 		'summitRef',
 		'wwffRef',
+		'wwtotaRef',
 		'spotter',
 		'spotterPrefix',
 		'daysOfWeek',
