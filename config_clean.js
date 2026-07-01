@@ -239,11 +239,12 @@ config.bands = [
 	{from: 70, to: 71, band: "4m"},
 	{from: 144, to: 148, band: "2m"},
 	{from: 219, to: 225, band: "1.25m"},
-	{from: 430, to: 440, band: "70cm"},
+	{from: 420, to: 450, band: "70cm"},
+	{from: 902, to: 928, band: "33cm"},
 	{from: 1200, to: 1400, band: "23cm"},
 	{from: 2300, to: 2450, band: "13cm"},
 	{from: 3300, to: 3500, band: "9cm"},
-	{from: 5400, to: 5900, band: "6cm"},
+	{from: 5400, to: 5925, band: "6cm"},
 	{from: 10489.550, to: 10490, band: "3cm_qo100"},
 	{from: 10000, to: 10500, band: "3cm"}
 ];
