@@ -359,8 +359,15 @@ function normalizeSpot(spot, callback) {
 	let band = config.bands.find((element) => {
 		return (element.from <= spot.frequency && element.to >= spot.frequency)
 	});
-	if (band !== undefined)
+	if (band !== undefined) {
 		spot.band = band.band;
+	}
+	
+	if (spot.band === "11m") {
+		// ignore CB, we deal with amateur radio only, as our lookup features (DXCC etc.)
+		// only work properly with real amateur radio callsigns
+		return;
+	}
 	
 	// parse summit reference
 	if (spot.summitRef) {
