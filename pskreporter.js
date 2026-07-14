@@ -82,6 +82,11 @@ class PskReporterReceiver extends EventEmitter {
 		if (rawSpot.receiverDecoderSoftware && rawSpot.receiverDecoderSoftware.includes('N1DQ-Importer-KA9Q-Radio')) {
 			return; // ignore these as they will usually have made-up spotter calls with strange suffixes
 		}
+
+		if (config.pskreporter.spotterFilterRegex.test(rawSpot.receiverCallsign)) {
+			console.info(`PSK Reporter spot matches spotter filter regex: ${rawSpot.receiverCallsign}`);
+			return;
+		}
 		
 		if (!rawSpot.senderCallsign || rawSpot.senderCallsign.startsWith('TNX') || rawSpot.senderCallsign.endsWith('/R') || rawSpot.senderCallsign.endsWith('/RX')) {
 			return;
@@ -121,7 +126,7 @@ class PskReporterReceiver extends EventEmitter {
 		
 		spot.title = `PSK Reporter spot ${spot.fullCallsign} (${hamutil.formatFrequency(spot.frequency)} ${spot.mode})`;
 
-		if (!config.pskreporter.spotterFilterRegex.test(rawSpot.receiverCallsign)) {
+		if (!config.pskreporter.spotterLookupDxccRegex.test(rawSpot.receiverCallsign)) {
 			console.log(`DXCC lookup blocked for spotter callsign ${rawSpot.receiverCallsign}`);
 			spot.noSpotterDxccLookup = true;
 		}

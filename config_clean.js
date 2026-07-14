@@ -202,7 +202,8 @@ config.pskreporter = {
 	quorum: 3,	// how many different spotters must see a call/band/mode combination before spots are deemed valid
 	quorumInterval: 15*60*1000,
 	disabled: false,
-	spotterFilterRegex: /^(([A-Z]{1,2}[0-9]?|[0-9][A-Z])\/)?([A-Z]{1,2}|[0-9][A-Z])[0-9]{1,2}[A-Z]{1,4}(\/(M|P|QRP|[0-9]))?(-[0-9])?$/i
+	spotterLookupDxccRegex: /^(([A-Z]{1,2}[0-9]?|[0-9][A-Z])\/)?([A-Z]{1,2}|[0-9][A-Z])[0-9]{1,2}[A-Z]{1,4}(\/(M|P|QRP|[0-9]))?(-[0-9])?$/i,
+	spotterFilterRegex: /^(N0CALL|W\/SWL)$/
 };
 
 config.simulator = {
