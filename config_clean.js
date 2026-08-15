@@ -20,6 +20,11 @@ config.wwff = {
 	listUrl: 'http://wwff.co/wwff-data/wwff_directory.csv'
 };
 
+config.wwbota = {
+	spotsUrl: 'https://api.wwbota.org/spots/?age=0',
+	listUrl: 'https://wwbota.org/wwbota-3',
+};
+
 config.mongodb = {
 	url: 'mongodb://hamalert:<redacted>@localhost:27017/hamalert',
 	dbName: 'hamalert'

@@ -1,6 +1,7 @@
 const util = require('util');
 const SotaSpotReceiver = require('./sotaspots');
 const PotaSpotReceiver = require('./potaspots');
+const WwbotaSpotReceiver = require('./wwbotaspots');
 const RbnReceiver = require('./rbn');
 const PskReporterReceiver = require('./pskreporter');
 const ClusterReceiver = require('./cluster');
@@ -85,6 +86,10 @@ function startReceivers() {
 	let potaSpotReceiver = new PotaSpotReceiver(db);
 	potaSpotReceiver.on('spot', notifySpot);
 	potaSpotReceiver.start();
+
+	let wwbotaSpotReceiver = new WwbotaSpotReceiver(db);
+	wwbotaSpotReceiver.on('spot', notifySpot);
+	wwbotaSpotReceiver.start();
 	
 	config.rbn.forEach(rbnConfig => {
 		let rbnReceiver = new RbnReceiver(rbnConfig);
@@ -162,6 +167,10 @@ function runMatcher(spot) {
 	
 	if (spot.wwffDivision) {
 		conditions.wwffDivision = [spot.wwffDivision, "*"];
+	}
+
+	if (spot.wwbotaScheme) {
+		conditions.wwbotaScheme = [spot.wwbotaScheme, "*"];
 	}
 	
 	if (spot.iotaGroupRef) {
