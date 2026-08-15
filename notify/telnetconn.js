@@ -167,6 +167,9 @@ class TelnetConnection extends EventEmitter {
 			if (spot.wwffRef) {
 				commentElements.push(spot.wwffRef);
 			}
+			if (spot.wwtotaRef) {
+				commentElements.push(spot.wwtotaRef);
+			}
 			if (spot.iotaGroupRef) {
 				commentElements.push(spot.iotaGroupRef);
 			}
