@@ -28,8 +28,10 @@ This:
 2. Starts `mongo:7` on `127.0.0.1:27117` and `redis:7` on `127.0.0.1:6479` (non-default ports,
    so they don't clash with a MongoDB/Redis you already have running locally).
 3. Waits for both to accept connections, then runs `tools/seedLocalUser.js` to create user
-   `HB9DQM` (password `testpass123`) with two telnet-notify triggers: one for HB9DQM's own
-   D-STAR callsign, one for anyone on reflector REF030.
+   `HB9DQM` (password `testpass123`) with two triggers (telnet and app actions): one for
+   HB9DQM's own D-STAR callsign, one for anyone on reflector REF030. The app action makes the
+   matched spots show up in the mobile app's feed (see the hamalert-app README for running the
+   app in a desktop browser against this stack).
 4. If `../hamalert-web/Dockerfile.dev` exists (or `HAMALERT_WEB_DIR` points at a checkout with
    one), builds and starts it on `127.0.0.1:8081`. Otherwise it prints a notice and continues
    without the web app.

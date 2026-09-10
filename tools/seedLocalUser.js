@@ -39,19 +39,19 @@ async function main() {
 	await db.collection('triggers').insertOne({
 		user_id: userId,
 		conditions: {callsign: username, source: 'dstar', dvEvent: 'active'},
-		actions: ['telnet'],
+		actions: ['telnet', 'app'],
 		comment: 'local test: my callsign on D-STAR'
 	});
 
 	await db.collection('triggers').insertOne({
 		user_id: userId,
 		conditions: {dvReflector: 'REF030'},	// no module letter: matches REF030-A, REF030-B, ...
-		actions: ['telnet'],
+		actions: ['telnet', 'app'],
 		comment: 'local test: anyone on REF030'
 	});
 
 	console.log(`User ${username} (password "${password}") created with _id ${userId}`);
-	console.log(`Two telnet triggers created. Simulate a spot with:`);
+	console.log(`Two triggers (telnet + app actions) created. Simulate a spot with:`);
 	console.log(`curl -X POST http://127.0.0.1:1983/sendSpot -H 'Content-Type: application/json' -d '{"user_id":"${userId}","source":"dstar","fullCallsign":"${username}","mode":"dstar","dvEvent":"active","dvNode":"${username}-B","dvReflector":"REF030-C"}'`);
 	await client.close();
 
