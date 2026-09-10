@@ -48,7 +48,9 @@ class TelnetNotifier extends Notifier {
 		connections.forEach(connection => {
 			try {
 				connection.notify(spot, comment);
-			} catch (e) {}
+			} catch (e) {
+				console.error(`Telnet notify failed for ${user.username}: ${e}`);
+			}
 		});
 	}
 }
