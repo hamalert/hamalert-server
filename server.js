@@ -175,12 +175,12 @@ function runMatcher(spot) {
 		conditions.iotaGroupRef = [spot.iotaGroupRef, "*"];
 	}
 
-	// D-STAR node/reflector: allow matching with or without module letter ("W4HFH C" or "W4HFH")
+	// D-STAR node/reflector: allow matching with or without module letter ("W4HFH-C" or "W4HFH")
 	if (spot.dvNode) {
-		conditions.dvNode = [spot.dvNode, spot.dvNode.split(' ')[0]];
+		conditions.dvNode = [spot.dvNode, spot.dvNode.split('-')[0]];
 	}
 	if (spot.dvReflector) {
-		conditions.dvReflector = [spot.dvReflector, spot.dvReflector.split(' ')[0]];
+		conditions.dvReflector = [spot.dvReflector, spot.dvReflector.split('-')[0]];
 	}
 	
 	// Add special values 'hf', 'vhf' and 'uhf' to band (only for spots that have a frequency)

@@ -18,6 +18,19 @@ const hamutil = require('./hamutil');
 		"frequency": 14.062,
 		"mode": "cw"
 	}
+
+	D-STAR presence spots have no frequency; instead they carry dvEvent ("active" or "linked"),
+	dvNode (e.g. "W4HFH-C") and optionally dvReflector (e.g. "REF030-C"):
+
+	{
+		"user_id": "586ff45b10a3c6d9c2bb11cf",
+		"source": "dstar",
+		"fullCallsign": "HB9DQM",
+		"mode": "dstar",
+		"dvEvent": "active",
+		"dvNode": "HB9DQM-B",
+		"dvReflector": "REF030-C"
+	}
 */
 class SimulatorReceiver extends EventEmitter {
 	constructor(db) {
@@ -36,7 +49,9 @@ class SimulatorReceiver extends EventEmitter {
 	}
 	
 	handleSendSpot(req, res) {
-		if (!req.body.user_id || !req.body.source || !req.body.fullCallsign || !req.body.frequency || !req.body.mode) {
+		let isDstar = (req.body.source === 'dstar');
+		if (!req.body.user_id || !req.body.source || !req.body.fullCallsign || !req.body.mode ||
+			(isDstar ? !req.body.dvNode : !req.body.frequency)) {
 			res.status(400).end();
 			return;
 		}
@@ -46,12 +61,28 @@ class SimulatorReceiver extends EventEmitter {
 			source: req.body.source,
 			time: new Date().toISOString().substring(11, 16),
 			fullCallsign: req.body.fullCallsign,
-			frequency: req.body.frequency,
 			mode: req.body.mode
 		};
 		
-		spot.title = `SIMULATED spot ${spot.fullCallsign} (${hamutil.formatFrequency(spot.frequency)} ${spot.mode.toUpperCase()})`;
-		spot.rawText = `SIMULATED SPOT: ${spot.time} ${spot.fullCallsign} (${hamutil.formatFrequency(spot.frequency)} ${spot.mode.toUpperCase()}), from ${spot.source}`;
+		if (isDstar) {
+			// D-STAR presence spot: no frequency, but event/node/reflector
+			spot.dvEvent = (req.body.dvEvent === 'linked') ? 'linked' : 'active';
+			spot.dvNode = String(req.body.dvNode).toUpperCase();
+			if (req.body.dvReflector) {
+				spot.dvReflector = String(req.body.dvReflector).toUpperCase();
+			}
+			let where = spot.dvNode;
+			if (spot.dvReflector) {
+				where = (spot.dvEvent === 'linked') ? `${spot.dvNode} to ${spot.dvReflector}` : `${spot.dvReflector} via ${spot.dvNode}`;
+			}
+			let verb = (spot.dvEvent === 'linked') ? 'linked' : 'active on';
+			spot.title = `SIMULATED D-STAR ${spot.fullCallsign} ${verb} ${where}`;
+			spot.rawText = `SIMULATED SPOT: ${spot.time} ${spot.fullCallsign} ${verb} ${where}, from ${spot.source}`;
+		} else {
+			spot.frequency = req.body.frequency;
+			spot.title = `SIMULATED spot ${spot.fullCallsign} (${hamutil.formatFrequency(spot.frequency)} ${spot.mode.toUpperCase()})`;
+			spot.rawText = `SIMULATED SPOT: ${spot.time} ${spot.fullCallsign} (${hamutil.formatFrequency(spot.frequency)} ${spot.mode.toUpperCase()}), from ${spot.source}`;
+		}
 		
 		if (req.body.spotter) {
 			spot.spotter = req.body.spotter;

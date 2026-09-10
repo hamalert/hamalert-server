@@ -64,7 +64,9 @@ exports.makeSpotParams = function(spot, comment, actions) {
 		iotaGroupName: spot.iotaGroupName,
 		dvEvent: spot.dvEvent,
 		dvNode: spot.dvNode,
-		dvReflector: spot.dvReflector
+		dvReflector: spot.dvReflector,
+		dvSuffix: spot.dvSuffix,
+		dvDuration: spot.dvDuration
 	};
 	
 	if (spot.qsl) {

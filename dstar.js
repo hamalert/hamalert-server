@@ -23,6 +23,9 @@ const TTLCache = require('@isaacs/ttlcache');
 	  key-up and a stats record (type flag 1, carries duration/silence/BER) at key-off.
 	  Example: 0:20260910000648N8IK____W4HFH__C1W4HFH__GCQCQCQ__000000970000________143.0s_S:0%_E:0.0%__
 
+	Repeater/node and reflector identifiers are normalized to "<callsign>-<module>" (e.g. W4HFH-C,
+	REF030-C); the module letter is omitted if there is none.
+
 	Both are normalized into "heard" records, classified into events and deduplicated:
 
 	- active: a voice transmission (UR = CQCQCQ, area routing, or a link command that was
@@ -44,7 +47,7 @@ function cleanField(field) {
 	return (field || '').replace(/_/g, ' ');
 }
 
-// "W4HFH  C" => "W4HFH C", "REF048 B" => "REF048 B", "        " => null
+// "W4HFH  C" => "W4HFH-C", "REF048 B" => "REF048-B", "        " => null
 function formatNode(field) {
 	if (!field) {
 		return null;
@@ -55,7 +58,7 @@ function formatNode(field) {
 		return null;
 	}
 	if (module) {
-		return `${callsign} ${module}`;
+		return `${callsign}-${module}`;
 	}
 	return callsign;
 }
@@ -184,7 +187,7 @@ class DstarReceiver extends EventEmitter {
 		} else if (linkCommandRegex.test(ur)) {
 			// Link command, e.g. "REF048BL": always a "linked" event; also voice if held long enough
 			let linkMatches = linkCommandRegex.exec(ur);
-			let target = `${linkMatches[1]} ${linkMatches[2]}`;
+			let target = `${linkMatches[1]}-${linkMatches[2]}`;
 			events.push({type: 'linked', node, reflector: target});
 			if (!dest) {
 				dest = target;

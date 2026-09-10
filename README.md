@@ -13,7 +13,7 @@ transmission (voice vs. link command; info/echo/unlink commands are ignored) and
 spot per callsign, node, reflector and event type per `config.dstar.dedupeInterval`.
 
 Spots have `source: 'dstar'`, `mode: 'dstar'`, no frequency, and the fields `dvEvent`
-(`active` or `linked`), `dvNode` (e.g. `W4HFH C`) and `dvReflector` (e.g. `REF030 C`). The
+(`active` or `linked`), `dvNode` (e.g. `W4HFH-C`) and `dvReflector` (e.g. `REF030-C`). The
 matcher accepts `dvNode`/`dvReflector` conditions with or without the module letter.
 
 Test without a database: `node tools/dstarTest.js` (live feeds) or
