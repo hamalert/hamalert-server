@@ -273,10 +273,10 @@ async function up({keep, noWeb, dryRun}) {
 	ensureNetwork(dryRun);
 
 	log('Starting MongoDB...');
-	runDocker(['run', '-d', '--name', MONGO_CONTAINER, '--network', NETWORK, '-p', `127.0.0.1:${MONGO_HOST_PORT}:27017`, 'mongo:7'], {dryRun, capture: true});
+	runDocker(['run', '-d', '--name', MONGO_CONTAINER, '--network', NETWORK, '-p', `127.0.0.1:${MONGO_HOST_PORT}:27017`, 'docker.io/library/mongo:7'], {dryRun, capture: true});
 
 	log('Starting Redis...');
-	runDocker(['run', '-d', '--name', REDIS_CONTAINER, '--network', NETWORK, '-p', `127.0.0.1:${REDIS_HOST_PORT}:6379`, 'redis:7'], {dryRun, capture: true});
+	runDocker(['run', '-d', '--name', REDIS_CONTAINER, '--network', NETWORK, '-p', `127.0.0.1:${REDIS_HOST_PORT}:6379`, 'docker.io/library/redis:7'], {dryRun, capture: true});
 
 	let cacheDir = path.join(repoRoot, '.local', 'cache');
 	if (dryRun) {
