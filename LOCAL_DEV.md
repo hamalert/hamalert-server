@@ -9,7 +9,7 @@ the web app is started too.
 
 ## Prerequisites
 
-- Docker (daemon running; `docker info` should succeed)
+- Docker (daemon running; `docker info` should succeed). Podman with the `podman-docker` shim works too.
 - Node.js 22
 - Optionally, a `hamalert-web` checkout next to this repo (`../hamalert-web`) if you want the
   web UI — see `HAMALERT_WEB_DIR` below if it lives somewhere else.
@@ -66,7 +66,9 @@ automatically (the `hamalert-dev` network is left in place so the next run is fa
   next run doesn't have to re-seed from scratch (data stays in the containers as long as they
   exist; `--down` still removes them).
 - `npm run local-dev -- --no-web` — skip the web app container even if a checkout is found.
-- `npm run local-dev:down` — stop and remove the dev containers and the `hamalert-dev` network.
+- `npm run local-dev:down` — stop and remove the dev containers, the `hamalert-dev` network and the
+  `hamalert-dev-web-vendor` volume (it holds the web app's composer packages, so they are installed
+  once rather than on every start and never touch your `hamalert-web` checkout).
 - `npm run local-dev -- --dry-run` — print every Docker command and the banner without running
   anything or starting the server; useful to sanity-check what it would do.
 - `HAMALERT_WEB_DIR=/path/to/hamalert-web npm run local-dev` — use a web checkout that isn't

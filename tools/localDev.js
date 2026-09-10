@@ -24,6 +24,7 @@ const NETWORK = 'hamalert-dev';
 const MONGO_CONTAINER = 'hamalert-dev-mongo';
 const REDIS_CONTAINER = 'hamalert-dev-redis';
 const WEB_CONTAINER = 'hamalert-dev-web';
+const WEB_VENDOR_VOLUME = 'hamalert-dev-web-vendor';	// keeps composer's vendor/ out of the bind-mounted checkout
 
 const MONGO_HOST_PORT = 27117;
 const REDIS_HOST_PORT = 6479;
@@ -99,6 +100,11 @@ function ensureNetwork(dryRun) {
 function removeNetwork(dryRun) {
 	// Only used by --down; the network is otherwise left in place between runs.
 	runDocker(['network', 'rm', NETWORK], {dryRun, ignoreError: true, capture: true});
+}
+
+function removeWebVendorVolume(dryRun) {
+	// Only used by --down; the volume is otherwise kept so composer install runs once, not on every start.
+	runDocker(['volume', 'rm', WEB_VENDOR_VOLUME], {dryRun, ignoreError: true, capture: true});
 }
 
 async function waitForMongo(url, timeoutMs) {
@@ -219,6 +225,7 @@ function buildAndRunWebApp(dryRun) {
 		'-p', `127.0.0.1:${WEB_HOST_PORT}:80`,
 		'--add-host=host.docker.internal:host-gateway',
 		'-v', `${webDir}:/var/www/html`,
+		'-v', `${WEB_VENDOR_VOLUME}:/var/www/html/vendor`,
 		'-e', `MONGODB_URI=mongodb://${MONGO_CONTAINER}:27017/hamalert`,
 		'-e', `SELF_URL=http://localhost:${WEB_HOST_PORT}`,
 		'-e', `SIMULATE_SPOT_URL=http://host.docker.internal:1983/sendSpot`,
@@ -258,6 +265,7 @@ async function down(dryRun) {
 	log('Stopping and removing dev containers and network...');
 	removeContainers(dryRun);
 	removeNetwork(dryRun);
+	removeWebVendorVolume(dryRun);
 	log('Done.');
 }
 
