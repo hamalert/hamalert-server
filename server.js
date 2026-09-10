@@ -5,6 +5,7 @@ const RbnReceiver = require('./rbn');
 const PskReporterReceiver = require('./pskreporter');
 const ClusterReceiver = require('./cluster');
 const SimulatorReceiver = require('./simulator');
+const DstarReceiver = require('./dstar');
 //const EmailNotifier = require('./notify/email');
 const ThreemaNotifier = require('./notify/threema');
 const URLNotifier = require('./notify/url');
@@ -105,6 +106,12 @@ function startReceivers() {
 	let simulatorReceiver = new SimulatorReceiver(db);
 	simulatorReceiver.on('spot', notifySpot);
 	simulatorReceiver.start();
+
+	if (config.dstar && !config.dstar.disabled) {
+		let dstarReceiver = new DstarReceiver();
+		dstarReceiver.on('spot', notifySpot);
+		dstarReceiver.start();
+	}
 	
 	/*notifySpot({
 		source: "sotawatch",
@@ -136,7 +143,7 @@ function runMatcher(spot) {
 	// Find matching triggers using matcher via JSON-RPC
 	let conditions = {};
 	
-	let fields = ['source', 'callsign', 'fullCallsign', 'summitAssociation', 'summitRegion', 'summitPoints', 'summitActivations', 'summitRef', 'wwffRef', 'iotaGroupRef', 'mode', 'time', 'spotter', 'state', 'spotterState', 'qsl', 'prefix', 'spotterPrefix', 'speed', 'snr'];
+	let fields = ['source', 'callsign', 'fullCallsign', 'summitAssociation', 'summitRegion', 'summitPoints', 'summitActivations', 'summitRef', 'wwffRef', 'iotaGroupRef', 'mode', 'time', 'spotter', 'state', 'spotterState', 'qsl', 'prefix', 'spotterPrefix', 'speed', 'snr', 'dvEvent'];
 	for (let field of fields) {
 		if (spot[field] !== undefined) {
 			conditions[field] = spot[field];
@@ -167,10 +174,20 @@ function runMatcher(spot) {
 	if (spot.iotaGroupRef) {
 		conditions.iotaGroupRef = [spot.iotaGroupRef, "*"];
 	}
+
+	// D-STAR node/reflector: allow matching with or without module letter ("W4HFH C" or "W4HFH")
+	if (spot.dvNode) {
+		conditions.dvNode = [spot.dvNode, spot.dvNode.split(' ')[0]];
+	}
+	if (spot.dvReflector) {
+		conditions.dvReflector = [spot.dvReflector, spot.dvReflector.split(' ')[0]];
+	}
 	
-	// Add special values 'hf', 'vhf' and 'uhf' to band
+	// Add special values 'hf', 'vhf' and 'uhf' to band (only for spots that have a frequency)
 	let range;
-	if (spot.frequency > 30000) {
+	if (spot.frequency === undefined) {
+		range = undefined;
+	} else if (spot.frequency > 30000) {
 		range = 'ehf';
 	} else if (spot.frequency > 3000) {
 		range = 'shf';
@@ -187,7 +204,9 @@ function runMatcher(spot) {
 	} else {
 		range = 'vlf';
 	}
-	conditions.band = [spot.band, range];
+	if (range !== undefined) {
+		conditions.band = [spot.band, range];
+	}
 	
 	// Add band slot condition
 	if (spot.dxcc && spot.band) {

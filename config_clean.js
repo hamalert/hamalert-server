@@ -206,6 +206,31 @@ config.pskreporter = {
 	spotterFilterRegex: /^(N0CALL|W\/SWL)/i
 };
 
+config.dstar = {
+	// D-STAR presence: QuadNet and ircDDB "last heard" logs (see dstar.js)
+	quadnet: {
+		url: 'https://www.openquad.net/ics/ics',
+		pollInterval: 5000,
+		timeout: 20000,
+		tailBytes: 65536,
+		disabled: false
+	},
+	ircddb: {
+		url: 'http://live.ircddb.net:8080/jj3.yaws',
+		pollInterval: 5000,
+		timeout: 20000,
+		//connectProxy: 'http://127.0.0.1:3128',	// only for development environments that require an HTTP CONNECT proxy
+		disabled: false
+	},
+	dedupeInterval: 15*60*1000,		// one alert per callsign/event/node/reflector within this window
+	maxAge: 10*60*1000,				// ignore records older than this
+	headerMergeInterval: 10*60*1000,	// how long to remember ircDDB header records (TX message) for their stats record
+	minVoiceDuration: 2,				// seconds; shorter transmissions are not considered voice
+	minVoiceDurationLinkCommand: 5,	// seconds; a link command held this long is also treated as voice
+	ignoreDirectedCalls: true,		// do not alert on callsign-routed (directed) calls
+	disabled: false
+};
+
 config.simulator = {
 	port: 1983,
 	address: '127.0.0.1'
@@ -313,7 +338,10 @@ config.matcher = {
 		'bandslot',
 		'state',
 		'spotterState',
-		'qsl'
+		'qsl',
+		'dvEvent',
+		'dvNode',
+		'dvReflector'
 	],
 	// Commonly used conditions for hash table optimization (cannot contain 'not' conditions!)
 	commonConditions: [
@@ -344,7 +372,10 @@ config.matcher = {
 		'bandslot',
 		'state',
 		'spotterState',
-		'qsl'
+		'qsl',
+		'dvEvent',
+		'dvNode',
+		'dvReflector'
 	]
 };
 
