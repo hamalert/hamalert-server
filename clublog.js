@@ -1,6 +1,6 @@
 const axios = require('axios');
 const fs = require('fs');
-const config = require('./config');
+const config = require('./config_loader');
 const LRU = require('lru-cache');
 const exitHook = require('async-exit-hook');
 
@@ -22,7 +22,11 @@ class ClubLogResolver {
 		exitHook(() => {
 			this.dumpCache();
 		});
-		
+
+		if (!config.clublog.apiKey) {
+			console.log('Club Log API key not configured, lookups are disabled');
+		}
+
 		setInterval(() => {
 			let oldItemCount = this.cache.itemCount;
 			this.cache.prune();
@@ -32,6 +36,11 @@ class ClubLogResolver {
 	
 	// Perform a Club Log lookup (may be cached) and return the corresponding DXCC from the database
 	lookup(callsign, callback) {
+		if (!config.clublog.apiKey) {
+			callback(null);
+			return;
+		}
+
 		if (config.clublog.noLookupCallsignsRegex.test(callsign)) {
 			callback(null);
 			return;

@@ -26,7 +26,7 @@ const assert = require('assert');
 const clone = require('clone');
 const async = require('async');
 const TTLCache = require('@isaacs/ttlcache');
-const config = require('./config');
+const config = require('./config_loader');
 
 const summitRefRegex = /([a-zA-Z0-9]{1,8}\/[a-zA-Z]{2})\-?((?:[0-9][0-9][1-9])|(?:[0-9][1-9][0])|(?:[1-9][0-9][0]))/;
 const sotaRefRegex = /^(.+)\/(.+)\-(\d+)$/;

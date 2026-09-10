@@ -1,6 +1,6 @@
 const cp = require('child_process');
 const exitHook = require('async-exit-hook');
-const config = require('./config');
+const config = require('./config_loader');
 
 class MatcherClient {
 	constructor() {

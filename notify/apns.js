@@ -1,5 +1,5 @@
 const apn = require('@parse/node-apn');
-const config = require('../config');
+const config = require('../config_loader');
 const Notifier = require('./notifier');
 const expand = require('expand-template')();
 const hamutil = require('../hamutil');

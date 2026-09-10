@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer')
-const config = require('../config')
+const config = require('../config_loader')
 
 let mail = {
 	from: 'do-not-reply@hamalert.org',

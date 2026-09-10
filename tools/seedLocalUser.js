@@ -54,6 +54,9 @@ async function main() {
 	console.log(`Two telnet triggers created. Simulate a spot with:`);
 	console.log(`curl -X POST http://127.0.0.1:1983/sendSpot -H 'Content-Type: application/json' -d '{"user_id":"${userId}","source":"dstar","fullCallsign":"${username}","mode":"dstar","dvEvent":"active","dvNode":"${username}-B","dvReflector":"REF030-C"}'`);
 	await client.close();
+
+	// Machine-readable, for tools/localDev.js to pick up (keep this the last line of output)
+	console.log(`USER_ID=${userId}`);
 }
 
 main().catch(e => {

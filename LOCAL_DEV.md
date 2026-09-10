@@ -1,106 +1,95 @@
 # Running HamAlert locally
 
-This is a minimal local setup for developing and testing spot sources (written while adding
-the D-STAR source). It runs the server, the matcher, the telnet notifier and the web app
-against a local MongoDB and Redis. Push notifications (APNS/FCM) and Threema are left out;
-they need real credentials.
+One-command local dev environment for developing and testing spot sources. It runs MongoDB
+and Redis in Docker, seeds a test user and two D-STAR triggers, and starts the server itself
+against `config-local.js` — no production credentials needed at all. Push notifications
+(APNS/FCM), Threema, and the RBN/cluster telnet feeds are left out; they need real credentials
+or a real callsign login. If you also have a `hamalert-web` checkout with a `Dockerfile.dev`,
+the web app is started too.
 
-There is no in-memory mode: MongoDB holds users, triggers and spots, and the matcher
-processes read triggers straight from it. Redis is only used for the per-user spot stream
-that the app reads, but the server opens it at startup.
+## Prerequisites
 
-## 1. Prerequisites
+- Docker (daemon running; `docker info` should succeed)
+- Node.js 22
+- Optionally, a `hamalert-web` checkout next to this repo (`../hamalert-web`) if you want the
+  web UI — see `HAMALERT_WEB_DIR` below if it lives somewhere else.
 
-- Node.js 22, PHP 8 with Composer and the `mongodb` PHP extension (`php -m | grep mongodb`)
-- Docker (or local MongoDB and Redis installs)
-
-```sh
-docker run -d --name hamalert-mongo -p 27017:27017 mongo:7
-docker run -d --name hamalert-redis -p 6379:6379 redis:7
-```
-
-## 2. Server
+## Run it
 
 ```sh
-cd hamalert-server
 npm install
-cp config_clean.js config.js
-mkdir -p /tmp/hamalert-cache
+npm run local-dev
 ```
 
-Edit `config.js`:
+This:
 
-| Setting | Value |
-|---|---|
-| `config.mongodb.url` | `mongodb://127.0.0.1:27017/hamalert` |
-| `config.rateLimit.dumpFile`, `config.clublog.dumpFile` | files under `/tmp/hamalert-cache/` |
-| `config.pskreporter.disabled` | `true` (needs a token) |
-| `config.rbn[*].login`, `config.cluster[*].login` | your own callsign, not the production one |
-| `config.matcher.numProcesses` | `1` |
-| `config.apns`, `config.fcm` | delete both blocks; the app notifier is skipped when they are absent |
-| `config.dstar.ircddb.connectProxy` | leave commented out unless you are behind an HTTP CONNECT proxy |
+1. Removes any leftover `hamalert-dev-*` containers from a previous run and creates the
+   `hamalert-dev` Docker network.
+2. Starts `mongo:7` on `127.0.0.1:27117` and `redis:7` on `127.0.0.1:6479` (non-default ports,
+   so they don't clash with a MongoDB/Redis you already have running locally).
+3. Waits for both to accept connections, then runs `tools/seedLocalUser.js` to create user
+   `HB9DQM` (password `testpass123`) with two telnet-notify triggers: one for HB9DQM's own
+   D-STAR callsign, one for anyone on reflector REF030.
+4. If `../hamalert-web/Dockerfile.dev` exists (or `HAMALERT_WEB_DIR` points at a checkout with
+   one), builds and starts it on `127.0.0.1:8081`. Otherwise it prints a notice and continues
+   without the web app.
+5. Prints a banner (web URL and login, telnet command, a ready-made curl command to simulate a
+   D-STAR spot).
+6. Starts the server itself (`HAMALERT_CONFIG=config-local.js NODE_ENV=development node
+   server.js`), attached to your terminal.
 
-Seed a user and two D-STAR triggers, then start the server:
+Stop it with Ctrl-C: the `hamalert-dev-mongo`/`-redis`/`-web` containers are removed
+automatically (the `hamalert-dev` network is left in place so the next run is fast).
 
-```sh
-node tools/seedLocalUser.js        # prints the user_id and a ready-made curl command
-NODE_ENV=development node server.js 2>&1 | tee server.log
-```
+## Using it
 
-Wait for `Loaded 2 (0) triggers`, `D-STAR QuadNet feed primed` and `D-STAR ircDDB feed primed`.
-Live D-STAR spots appear as `Spot: ... (dstar), from <gateway> via dstar` within a minute or two.
+- Telnet: `nc 127.0.0.1 7300`, login `HB9DQM` / `testpass123`.
+- Simulate a spot (the banner prints the exact command with the real `user_id`):
+  ```sh
+  curl -X POST http://127.0.0.1:1983/sendSpot -H 'Content-Type: application/json' -d '{
+    "user_id": "<user_id>", "source": "dstar", "fullCallsign": "HB9DQM", "mode": "dstar",
+    "dvEvent": "active", "dvNode": "HB9DQM-B", "dvReflector": "REF030-C"
+  }'
+  ```
+  Simulated spots only match the triggers of the given user. The telnet session shows a line
+  like `DX de :               DV  HB9DQM       DV HB9DQM-B REF030-C           1227Z`.
+- Live D-STAR spots from the real QuadNet/ircDDB feeds appear in the server log as
+  `Spot: ... (dstar), from <gateway> via dstar` once someone transmits (usually within a
+  minute or two). These are real network feeds; the ircDDB one may need a proxy on restricted
+  networks (see `config-local.js`'s `dstar.ircddb.connectProxy`).
+- The web app, if started, is at http://localhost:8081, same login. Its "Simulate" page posts
+  to the simulator through `host.docker.internal`, so it works the same way as the curl above.
 
-## 3. Receive alerts over telnet
+## Options
 
-```sh
-nc 127.0.0.1 7300
-# login: HB9DQM   password: testpass123
-```
+- `npm run local-dev -- --keep` — leave the containers running when the server exits, so the
+  next run doesn't have to re-seed from scratch (data stays in the containers as long as they
+  exist; `--down` still removes them).
+- `npm run local-dev -- --no-web` — skip the web app container even if a checkout is found.
+- `npm run local-dev:down` — stop and remove the dev containers and the `hamalert-dev` network.
+- `npm run local-dev -- --dry-run` — print every Docker command and the banner without running
+  anything or starting the server; useful to sanity-check what it would do.
+- `HAMALERT_WEB_DIR=/path/to/hamalert-web npm run local-dev` — use a web checkout that isn't
+  at `../hamalert-web`.
+- `npm run seed-local` — re-run just the seeding step against the already-running containers.
+- `npm run dstar-test` — standalone D-STAR feed tester (`tools/dstarTest.js`), no database
+  needed; see its header comment for options (`--file`, `--connect-proxy`, etc).
 
-Then send a simulated D-STAR spot (use the `user_id` printed by the seed script):
+### Pointing at a different config
 
-```sh
-curl -X POST http://127.0.0.1:1983/sendSpot -H 'Content-Type: application/json' -d '{
-  "user_id": "<user_id>", "source": "dstar", "fullCallsign": "HB9DQM", "mode": "dstar",
-  "dvEvent": "active", "dvNode": "HB9DQM-B", "dvReflector": "REF030-C"
-}'
-```
-
-The telnet session shows a line like
-
-```
-DX de :               DV  HB9DQM       DV HB9DQM-B REF030-C           1227Z
-```
-
-and the spot is written to the `spots` collection and to the Redis stream `spots:<user_id>`.
-Simulated spots only match the triggers of the given user.
-
-## 4. Web app
-
-```sh
-cd hamalert-web
-composer install
-cp config_clean.inc.php config.inc.php
-```
-
-Edit `config.inc.php`: `mongodb_uri` to `mongodb://127.0.0.1:27017/hamalert`, `self_url` to
-`http://127.0.0.1:8081`, and `simulate_spot_url` to `http://127.0.0.1:1983/sendSpot`.
-
-```sh
-php -S 127.0.0.1:8081 tools/router.php
-```
-
-The router replaces the `.htaccess` rewrite (extensionless URLs such as `/triggers` and
-`/ajax/trigger_update`) for PHP's built-in server. Log in at http://127.0.0.1:8081/login with
-the seeded user, edit triggers, and use the Simulate page to send spots. Trigger changes take
-up to `config.matcher.reloadInterval` (60 s) to reach the matcher.
-
-If your PHP `mongodb` extension is 2.x, the pinned `mongodb/mongodb` 1.x library is not
-compatible with it. Either install a 1.x extension or, locally only, run
-`composer update mongodb/mongodb` with the constraint widened to `^1.0.0 || ^2.0`.
+Every module loads its config through `config_loader.js`, which requires `./config.js` by
+default or, if set, the file named by `HAMALERT_CONFIG` (resolved relative to the current
+directory). `npm run local-dev` sets `HAMALERT_CONFIG=config-local.js` when it starts the
+server; you can do the same by hand for any other config file, e.g.
+`HAMALERT_CONFIG=config-local.js node server.js`.
 
 ## Known gaps
 
-- RBN, cluster and WWFF telnet feeds reconnect in a loop if outbound TCP is blocked.
-- Club Log lookups fail without an API key; spots then have no DXCC, which is harmless.
-- APNS, FCM, Threema and URL notifiers are not exercised by this setup.
+- No push notifications: `config.apns`/`config.fcm` are absent from `config-local.js`, and
+  `notify/app.js` skips those notifiers when they're absent.
+- No Club Log lookups: `config.clublog.apiKey` is `null` locally, and `clublog.js` skips the
+  HTTP call entirely in that case, so spots have no DXCC. Harmless.
+- No RBN or cluster telnet feeds: `config.rbn`/`config.cluster` are empty arrays locally, since
+  those feeds need a real callsign login.
+- Threema, mail and crash-notify mail are configured with obvious placeholder credentials and
+  are not exercised by this setup.

@@ -1,5 +1,5 @@
 const axios = require('axios');
-const config = require('./config');
+const config = require('./config_loader');
 const EventEmitter = require('events');
 const util = require('util');
 const crypto = require('crypto');

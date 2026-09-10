@@ -24,7 +24,7 @@ for (let i = 0; i < args.length; i++) {
 			options.quadnet = {disabled: true};
 			break;
 		case '--connect-proxy':
-			options.ircddb = Object.assign({}, require('../config').dstar.ircddb, {connectProxy: args[++i]});
+			options.ircddb = Object.assign({}, require('../config_loader').dstar.ircddb, {connectProxy: args[++i]});
 			break;
 		case '--file':
 			file = args[++i];

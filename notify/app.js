@@ -1,4 +1,4 @@
-const config = require('../config');
+const config = require('../config_loader');
 const Notifier = require('./notifier');
 const APNSNotifier = require('./apns');
 const FCMNotifier = require('./fcm');

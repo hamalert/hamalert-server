@@ -1,4 +1,4 @@
-const config = require('../config');
+const config = require('../config_loader');
 const net = require('net');
 const Notifier = require('./notifier');
 const TelnetConnection = require('./telnetconn');

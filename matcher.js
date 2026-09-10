@@ -1,5 +1,5 @@
 const jayson = require('jayson');
-const config = require('./config');
+const config = require('./config_loader');
 const assert = require('assert');
 const MongoClient = require('mongodb').MongoClient;
 const RoaringBitmap32 = require("roaring/RoaringBitmap32");

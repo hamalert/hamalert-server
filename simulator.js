@@ -1,4 +1,4 @@
-const config = require('./config');
+const config = require('./config_loader');
 const EventEmitter = require('events');
 const express = require('express');
 const bodyParser = require('body-parser');

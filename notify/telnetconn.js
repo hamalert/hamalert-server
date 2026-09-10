@@ -1,4 +1,4 @@
-const config = require('../config');
+const config = require('../config_loader');
 const hamutil = require('../hamutil');
 const net = require('net');
 const readline = require('readline');

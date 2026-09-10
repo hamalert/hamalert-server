@@ -1,4 +1,4 @@
-const config = require('../config');
+const config = require('../config_loader');
 const Notifier = require('./notifier');
 const axios = require('axios');
 const hamutil = require('../hamutil');
