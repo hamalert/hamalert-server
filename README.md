@@ -29,9 +29,19 @@ active on, or links to, a D-STAR repeater module or reflector module. It tails t
 transmission (voice vs. link command; info/echo/unlink commands are ignored) and emits one
 spot per callsign, node, reflector and event type per `config.dstar.dedupeInterval`.
 
-Spots have `source: 'dstar'`, `mode: 'dstar'`, no frequency, and the fields `dvEvent`
-(`active` or `linked`), `dvNode` (e.g. `W4HFH-C`) and `dvReflector` (e.g. `REF030-C`). The
-matcher accepts `dvNode`/`dvReflector` conditions with or without the module letter.
+Spots have `source: 'dstar'`, `mode: 'dstar'`, and the fields `dvEvent` (`active` or `linked`),
+`dvNode` (e.g. `W4HFH-C`) and `dvReflector` (e.g. `REF030-C`). The matcher accepts
+`dvNode`/`dvReflector` conditions with or without the module letter.
+
+`dstar.js` itself carries no frequency; `server.js` resolves frequency/band from the QuadNet
+(`openquad.net`) and ircDDB (`status.ircddb.net`) repeater lists (`dstar_nodes.js`), keyed by
+repeater module. If a node is not listed in either list, the band is guessed from the module
+letter convention (A = 23cm, B = 70cm, C = 2m) and flagged with `bandIsGuessed: true`;
+otherwise (an unknown module letter, or no module at all) `band` is set to `"unknown"`.
 
 Test without a database: `node tools/dstarTest.js` (live feeds) or
 `node tools/dstarTest.js --file <saved log>`.
+
+Test the node directory lookup on its own (also no database needed): `node
+tools/dstarNodeTest.js <node> [<node> ...]`, e.g. `node tools/dstarNodeTest.js 2E0CMS-B
+W4HFH-C ZZ9ZZZ-C`.

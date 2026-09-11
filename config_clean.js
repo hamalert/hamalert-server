@@ -210,17 +210,25 @@ config.dstar = {
 	// D-STAR presence: QuadNet and ircDDB "last heard" logs (see dstar.js)
 	quadnet: {
 		url: 'https://www.openquad.net/ics/ics',
-		pollInterval: 5000,
+		pollInterval: 15000,
 		timeout: 20000,
 		tailBytes: 65536,
 		disabled: false
 	},
 	ircddb: {
 		url: 'http://live.ircddb.net:8080/jj3.yaws',
-		pollInterval: 5000,
+		pollInterval: 15000,
 		timeout: 20000,
 		//connectProxy: 'http://127.0.0.1:3128',	// only for development environments that require an HTTP CONNECT proxy
 		disabled: false
+	},
+	// D-STAR node/reflector frequency directory (see dstar_nodes.js); used by server.js to
+	// resolve frequency/band for spots emitted by dstar.js
+	nodeLists: {
+		quadnetUrl: 'https://www.openquad.net/gateway.php',
+		ircddbUrl: 'https://status.ircddb.net/repeater.php',
+		refreshInterval: 3600*1000,
+		dumpFile: '/data/hamalert/cache/dstar-nodes.dump'
 	},
 	dedupeInterval: 15*60*1000,		// one alert per callsign/event/node/reflector within this window
 	maxAge: 10*60*1000,				// ignore records older than this

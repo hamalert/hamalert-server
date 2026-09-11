@@ -6,6 +6,7 @@ const PskReporterReceiver = require('./pskreporter');
 const ClusterReceiver = require('./cluster');
 const SimulatorReceiver = require('./simulator');
 const DstarReceiver = require('./dstar');
+const DstarNodeDirectory = require('./dstar_nodes');
 //const EmailNotifier = require('./notify/email');
 const ThreemaNotifier = require('./notify/threema');
 const URLNotifier = require('./notify/url');
@@ -43,6 +44,7 @@ var limitLogger;
 var matchLogger;
 var statsUpdater = new StatsUpdater();
 var modeGuesser = new ModeGuesser();
+var dstarNodeDirectory = new DstarNodeDirectory();
 var db;
 var clubLogResolver;
 
@@ -128,7 +130,8 @@ function startReceivers() {
 function notifySpot(spot) {
 	statsUpdater.countSpot(spot.source);
 	normalizeSpot(spot, (spot) => {
-		console.log(`Spot: ${spot.time} ${spot.fullCallsign} on ${spot.frequency} MHz (${spot.mode}), from ${spot.spotter} via ${spot.source}`);
+		let where = (spot.frequency !== undefined) ? `${spot.frequency} MHz` : spot.band;
+		console.log(`Spot: ${spot.time} ${spot.fullCallsign} on ${where} (${spot.mode}), from ${spot.spotter} via ${spot.source}`);
 		
 		if (spot.dxcc && spot.dxcc.dxcc == 344 && !spot.user_id) {
 			// North Korea, most likely fake
@@ -183,10 +186,15 @@ function runMatcher(spot) {
 		conditions.dvReflector = [spot.dvReflector, spot.dvReflector.split('-')[0]];
 	}
 	
-	// Add special values 'hf', 'vhf' and 'uhf' to band (only for spots that have a frequency)
+	// Add special values 'hf', 'vhf' and 'uhf' to band (only for spots that have a frequency;
+	// for a spot with a band but no frequency - e.g. a D-STAR spot with a guessed band - derive
+	// the range from the band via config.bandRangesToBands instead)
 	let range;
 	if (spot.frequency === undefined) {
 		range = undefined;
+		if (spot.band) {
+			range = Object.keys(config.bandRangesToBands).find((r) => config.bandRangesToBands[r].includes(spot.band));
+		}
 	} else if (spot.frequency > 30000) {
 		range = 'ehf';
 	} else if (spot.frequency > 3000) {
@@ -204,8 +212,8 @@ function runMatcher(spot) {
 	} else {
 		range = 'vlf';
 	}
-	if (range !== undefined) {
-		conditions.band = [spot.band, range];
+	if (spot.band !== undefined) {
+		conditions.band = (range !== undefined) ? [spot.band, range] : [spot.band];
 	}
 	
 	// Add band slot condition
@@ -366,6 +374,12 @@ function normalizeSpot(spot, callback) {
 		spot.prefix = prefix;
 	}
 
+	// D-STAR: make sure every spot has a spotter, even without a gateway (rpt2) callsign,
+	// before we compute the spotter prefix below
+	if (spot.source === 'dstar' && !spot.spotter && spot.dvNode) {
+		spot.spotter = spot.dvNode.split('-')[0];
+	}
+
 	// determine spotter prefix
 	if (spot.spotter) {
 		let spotterPrefix = calcPrefix(spot.spotter);
@@ -373,13 +387,35 @@ function normalizeSpot(spot, callback) {
 			spot.spotterPrefix = spotterPrefix;
 		}
 	}
-	
-	// determine band
-	let band = config.bands.find((element) => {
-		return (element.from <= spot.frequency && element.to >= spot.frequency)
-	});
-	if (band !== undefined) {
-		spot.band = band.band;
+
+	// D-STAR: no frequency comes with the spot (see dstar.js); resolve it from the QuadNet/
+	// ircDDB node directory by repeater module, or fall back to guessing the band from the
+	// module letter convention (A = 23cm, B = 70cm, C = 2m)
+	if (spot.source === 'dstar' && spot.frequency === undefined && spot.dvNode) {
+		let nodeInfo = dstarNodeDirectory.lookup(spot.dvNode);
+		if (nodeInfo) {
+			spot.frequency = nodeInfo.frequency;
+			spot.frequencySource = 'nodelist';
+		} else {
+			let module = spot.dvNode.split('-')[1];
+			let guessedBand = {A: '23cm', B: '70cm', C: '2m'}[module];
+			if (guessedBand) {
+				spot.band = guessedBand;
+				spot.bandIsGuessed = true;
+			} else {
+				spot.band = 'unknown';
+			}
+		}
+	}
+
+	// determine band (skip if already set above, e.g. a guessed D-STAR band)
+	if (spot.band === undefined && spot.frequency !== undefined) {
+		let band = config.bands.find((element) => {
+			return (element.from <= spot.frequency && element.to >= spot.frequency)
+		});
+		if (band !== undefined) {
+			spot.band = band.band;
+		}
 	}
 	
 	if (spot.band === "11m") {

@@ -33,6 +33,11 @@ const TTLCache = require('@isaacs/ttlcache');
 	- linked: a link command (UR = <reflector><module>L)
 
 	Info/echo/unlink and other control commands never produce events.
+
+	Heard records carry the repeater/hotspot module (dvNode, e.g. "W4HFH-C") but no frequency.
+	Frequency/band are not resolved here: server.js's normalizeSpot() looks dvNode up in the
+	QuadNet/ircDDB node directory (dstar_nodes.js) so that simulated spots benefit from the same
+	logic as live ones.
 */
 
 const feedUserAgent = 'HamAlert/1.0 (+https://hamalert.org)';

@@ -38,7 +38,8 @@
     "local-dev": "node tools/localDev.js",
     "local-dev:down": "node tools/localDev.js --down",
     "seed-local": "MONGO_URL=mongodb://127.0.0.1:27117/hamalert node tools/seedLocalUser.js",
-    "dstar-test": "node tools/dstarTest.js"
+    "dstar-test": "node tools/dstarTest.js",
+    "dstar-nodes": "node tools/dstarNodeTest.js"
   },
   "author": "",
   "license": "ISC"

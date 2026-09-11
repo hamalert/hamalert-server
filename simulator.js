@@ -19,8 +19,9 @@ const hamutil = require('./hamutil');
 		"mode": "cw"
 	}
 
-	D-STAR presence spots have no frequency; instead they carry dvEvent ("active" or "linked"),
-	dvNode (e.g. "W4HFH-C") and optionally dvReflector (e.g. "REF030-C"):
+	D-STAR presence spots carry dvEvent ("active" or "linked"), dvNode (e.g. "W4HFH-C") and
+	optionally dvReflector (e.g. "REF030-C") instead of a frequency; frequency is optional and,
+	if omitted, is resolved by server.js from the D-STAR node directory:
 
 	{
 		"user_id": "586ff45b10a3c6d9c2bb11cf",
@@ -65,11 +66,15 @@ class SimulatorReceiver extends EventEmitter {
 		};
 		
 		if (isDstar) {
-			// D-STAR presence spot: no frequency, but event/node/reflector
+			// D-STAR presence spot: event/node/reflector instead of frequency
 			spot.dvEvent = (req.body.dvEvent === 'linked') ? 'linked' : 'active';
 			spot.dvNode = String(req.body.dvNode).toUpperCase();
 			if (req.body.dvReflector) {
 				spot.dvReflector = String(req.body.dvReflector).toUpperCase();
+			}
+			if (req.body.frequency !== undefined) {
+				// Optional: if omitted, server.js resolves it from the D-STAR node directory
+				spot.frequency = req.body.frequency;
 			}
 			let where = spot.dvNode;
 			if (spot.dvReflector) {

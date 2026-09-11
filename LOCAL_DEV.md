@@ -55,6 +55,9 @@ automatically (the `hamalert-dev` network is left in place so the next run is fa
   ```
   Simulated spots only match the triggers of the given user. The telnet session shows a line
   like `DX de :               DV  HB9DQM       DV HB9DQM-B REF030-C           1227Z`.
+  Frequency/band are resolved from the QuadNet/ircDDB repeater lists by repeater module (here
+  `HB9DQM-B`); if a node isn't listed there, the band is guessed from the module letter
+  (A = 23cm, B = 70cm, C = 2m, flagged `bandIsGuessed`), otherwise `band` is `"unknown"`.
 - Live D-STAR spots from the real QuadNet/ircDDB feeds appear in the server log as
   `Spot: ... (dstar), from <gateway> via dstar` once someone transmits (usually within a
   minute or two). These are real network feeds; the ircDDB one may need a proxy on restricted
@@ -78,6 +81,10 @@ automatically (the `hamalert-dev` network is left in place so the next run is fa
 - `npm run seed-local` — re-run just the seeding step against the already-running containers.
 - `npm run dstar-test` — standalone D-STAR feed tester (`tools/dstarTest.js`), no database
   needed; see its header comment for options (`--file`, `--connect-proxy`, etc).
+- `npm run dstar-nodes -- <node> [<node> ...]` — standalone D-STAR node directory tester
+  (`tools/dstarNodeTest.js`), no database needed; fetches the QuadNet/ircDDB repeater lists and
+  prints the frequency lookup for the given nodes, e.g. `npm run dstar-nodes -- 2E0CMS-B
+  W4HFH-C ZZ9ZZZ-C`.
 
 ### Pointing at a different config
 
