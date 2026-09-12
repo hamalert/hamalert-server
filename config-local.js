@@ -134,6 +134,12 @@ config.dstar = {
 		//connectProxy: 'http://127.0.0.1:3128',	// only for development environments that require an HTTP CONNECT proxy
 		disabled: false
 	},
+	dstarusers: {
+		url: 'https://www.dstarusers.org/lastheard.php',
+		pollInterval: 30000,
+		timeout: 20000,
+		disabled: false
+	},
 	// D-STAR node/reflector frequency directory (see dstar_nodes.js); used by server.js to
 	// resolve frequency/band for spots emitted by dstar.js
 	nodeLists: {

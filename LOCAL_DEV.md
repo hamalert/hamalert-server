@@ -61,7 +61,9 @@ automatically (the `hamalert-dev` network is left in place so the next run is fa
 - Live D-STAR spots from the real QuadNet/ircDDB feeds appear in the server log as
   `Spot: ... (dstar), from <gateway> via dstar` once someone transmits (usually within a
   minute or two). These are real network feeds; the ircDDB one may need a proxy on restricted
-  networks (see `config-local.js`'s `dstar.ircddb.connectProxy`).
+  networks (see `config-local.js`'s `dstar.ircddb.connectProxy`). A third feed polls
+  dstarusers.org every 30s for REF/XRF/DCS/XLX reflector activity (`dstar.dstarusers`); its
+  spots for hotspot/dongle users have a `dvReflector` but no `dvNode`.
 - The web app, if started, is at http://localhost:8081, same login. Its "Simulate" page posts
   to the simulator through `host.docker.internal`, so it works the same way as the curl above.
 

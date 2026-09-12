@@ -27,7 +27,9 @@ no RBN/cluster feeds). The web app can also be built and run on its own; see its
 active on, or links to, a D-STAR repeater module or reflector module. It tails the public
 "last heard" logs of QuadNet (`openquad.net`) and ircDDB (`live.ircddb.net`), classifies each
 transmission (voice vs. link command; info/echo/unlink commands are ignored) and emits one
-spot per callsign, node, reflector and event type per `config.dstar.dedupeInterval`.
+spot per callsign, node, reflector and event type per `config.dstar.dedupeInterval`. A third
+source, dstarusers.org (see below), covers REF/XRF/DCS/XLX reflector activity that QuadNet and
+ircDDB never see.
 
 Spots have `source: 'dstar'`, `mode: 'dstar'`, and the fields `dvEvent` (`active` or `linked`),
 `dvNode` (e.g. `W4HFH-C`) and `dvReflector` (e.g. `REF030-C`). The matcher accepts
@@ -39,8 +41,25 @@ repeater module. If a node is not listed in either list, the band is guessed fro
 letter convention (A = 23cm, B = 70cm, C = 2m) and flagged with `bandIsGuessed: true`;
 otherwise (an unknown module letter, or no module at all) `band` is set to `"unknown"`.
 
-Test without a database: `node tools/dstarTest.js` (live feeds) or
-`node tools/dstarTest.js --file <saved log>`.
+### dstarusers.org feed
+
+`dstar.js` also polls `https://www.dstarusers.org/lastheard.php` every 30s (`config.dstar.dstarusers`),
+a static HTML "last heard" page kept up to date by DStarMonitor agents running on DPlus/DExtra
+REF/XRF/DCS/XLX reflectors and on Icom repeater gateways. This is the only source of REF
+reflector traffic; QuadNet and ircDDB only see repeater/hotspot activity, with zero overlap
+measured against dstarusers.org. Each row is diffed against a watermark of previously-seen rows
+(the page has no offset/line-number mechanism) and maps straight to a single `active` event; the
+first poll only primes this watermark and emits nothing.
+
+A row naming a bare reflector with no module (e.g. `REF030`) is a hotspot/dongle user reported
+by the reflector itself, which has no way to know which module they're on; it becomes a spot
+with `dvReflector` but no `dvNode` at all. So that these aren't missed, `runMatcher()` expands a
+module-less `dvReflector` condition to match every module (`REF030`, `REF030-A` .. `REF030-E`),
+meaning a module-specific trigger like `REF030-C` also fires for them.
+
+Test without a database: `node tools/dstarTest.js` (live feeds), `node tools/dstarTest.js --file
+<saved QuadNet/ircDDB log>`, or `node tools/dstarTest.js --dstarusers-file <saved lastheard.php
+page>` (e.g. `tools/fixtures/dstarusers-lastheard.html`).
 
 Test the node directory lookup on its own (also no database needed): `node
 tools/dstarNodeTest.js <node> [<node> ...]`, e.g. `node tools/dstarNodeTest.js 2E0CMS-B

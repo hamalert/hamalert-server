@@ -23,6 +23,15 @@ const TTLCache = require('@isaacs/ttlcache');
 	  key-up and a stats record (type flag 1, carries duration/silence/BER) at key-off.
 	  Example: 0:20260910000648N8IK____W4HFH__C1W4HFH__GCQCQCQ__000000970000________143.0s_S:0%_E:0.0%__
 
+	- dstarusers.org last heard page (https://www.dstarusers.org/lastheard.php)
+	  Static HTML table (refreshed by DStarMonitor agents on DPlus REF reflectors and Icom
+	  gateways), polled and diffed against a watermark of previously-seen rows since the page
+	  has no offset/line-number mechanism. Unlike the other two sources this only carries
+	  presence directly (no UR/routing field to classify), so each row maps straight to a
+	  single "active" event; there is no "linked" event and no voice-duration filtering.
+	  A reflector row with no module (a dongle/hotspot user reported by the reflector itself)
+	  produces a dvReflector with no module letter and no dvNode at all.
+
 	Repeater/node and reflector identifiers are normalized to "<callsign>-<module>" (e.g. W4HFH-C,
 	REF030-C); the module letter is omitted if there is none.
 
@@ -47,6 +56,60 @@ const linkCommandRegex = /^([A-Z0-9]{3,6}) {0,3}([A-Z])L$/;
 const quadnetLineRegex = /^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\s+([\d.]+)s:\s*(\d+)%:\s*([\d.]+)% (.{8})\/(.{4}) (.{8}) (.{8}) (.{8}) (.{20}) (.{8})$/;
 const ircddbLineRegex = /^(\d+):(.{31,99})$/;
 const ircddbStatsRegex = /^([\d.]+)s_S:(\d+)%_E:([\d.]+)%/;
+
+// dstarusers.org lastheard.php parsing (see DstarusersFeed below)
+const dstarusersRowRegex = /<tr class="rowres[12]">(.*?)<\/tr>/gs;
+const dstarusersCellRegex = /<td>(.*?)<\/td>/gs;
+const dstarusersTimeRegex = /^(\d\d)\/(\d\d)\/(\d\d) (\d\d):(\d\d):(\d\d) UTC$/;
+const dstarusersCallsignRegex = /^(\S+)(?:\s+(\S+))?$/;
+// "REF030 C 2 Meters", "REF030 Dongle User", "NS9RC B 440 MHz" (trailing " DVD" already stripped)
+const dstarusersNodeRegex = /^(\S+)(?:\s+([A-Z]))?\s+(.+)$/;
+const dstarusersReflectorPrefixRegex = /^(?:REF|XRF|DCS|XLX)/;
+// D-STAR's "1.2 GHz"/"440 MHz"/"2 Meters" module bands, as printed by dstarusers.org (which
+// omits the space in "1.2GHz") or, per the module letter convention, spelled out ("23 cm" etc.)
+const dstarusersBands = {
+	'2METERS': '2m',
+	'440MHZ': '70cm', '70CM': '70cm',
+	'1.2GHZ': '23cm', '23CM': '23cm'
+};
+
+function htmlUnescape(text) {
+	return text
+		.replace(/&nbsp;/gi, ' ')
+		.replace(/&amp;/gi, '&')
+		.replace(/&lt;/gi, '<')
+		.replace(/&gt;/gi, '>')
+		.replace(/&quot;/gi, '"')
+		.replace(/&#0?39;/gi, "'");
+}
+
+// Strip tags, unescape entities, and collapse whitespace (incl. non-breaking spaces) in an HTML table cell
+function cleanCell(html) {
+	return htmlUnescape(html.replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim();
+}
+
+function parseDstarusersBand(text) {
+	return dstarusersBands[text.replace(/\s+/g, '').toUpperCase()];
+}
+
+// Parse a "Reporting Node" cell into its callsign/module/band, and whether it names a
+// reflector (REF/XRF/DCS/XLX) or a repeater/gateway. Returns null if unparseable.
+function parseDstarusersNode(text) {
+	let stripped = text.replace(/\s+DVD$/i, '');
+	let matches = dstarusersNodeRegex.exec(stripped);
+	if (!matches) {
+		return null;
+	}
+	let callsign = matches[1];
+	let module = matches[2] || null;
+	let rest = matches[3];
+	let isDongle = /^dongle\b/i.test(rest);
+	return {
+		id: module ? `${callsign}-${module}` : callsign,
+		isReflector: dstarusersReflectorPrefixRegex.test(callsign),
+		band: isDongle ? undefined : parseDstarusersBand(rest)
+	};
+}
 
 function cleanField(field) {
 	return (field || '').replace(/_/g, ' ');
@@ -89,6 +152,14 @@ class DstarReceiver extends EventEmitter {
 			let feed = new IrcddbLiveFeed(this.options.ircddb);
 			feed.on('record', (record, priming) => this.processRecord(record, priming));
 			feed.on('error', err => console.error(`D-STAR ircDDB feed error: ${err}`));
+			feed.start();
+			this.feeds.push(feed);
+		}
+
+		if (this.options.dstarusers && !this.options.dstarusers.disabled) {
+			let feed = new DstarusersFeed(this.options.dstarusers);
+			feed.on('record', (record, priming) => this.processRecord(record, priming));
+			feed.on('error', err => console.error(`D-STAR dstarusers feed error: ${err}`));
 			feed.start();
 			this.feeds.push(feed);
 		}
@@ -164,8 +235,79 @@ class DstarReceiver extends EventEmitter {
 		return record;
 	}
 
+	// Parse a dstarusers.org lastheard.php page into heard records (newest first, as on the page).
+	// Unparseable rows (header, nav table, anything not matching the expected shape) are skipped.
+	static parseDstarusersPage(html) {
+		let records = [];
+		let rowMatches;
+		dstarusersRowRegex.lastIndex = 0;
+		while ((rowMatches = dstarusersRowRegex.exec(html)) !== null) {
+			let cells = [];
+			let cellMatches;
+			dstarusersCellRegex.lastIndex = 0;
+			while ((cellMatches = dstarusersCellRegex.exec(rowMatches[1])) !== null) {
+				cells.push(cellMatches[1]);
+			}
+			if (cells.length !== 4) {
+				continue;
+			}
+			let record = DstarReceiver.parseDstarusersRow(cells);
+			if (record) {
+				records.push(record);
+			}
+		}
+		return records;
+	}
+
+	// Parse one dstarusers.org row (its 4 raw <td> cell contents) into a heard record (or null)
+	static parseDstarusersRow(cells) {
+		let callsignMatches = dstarusersCallsignRegex.exec(cleanCell(cells[0]));
+		if (!callsignMatches) {
+			return null;
+		}
+		let my = callsignMatches[1].toUpperCase();
+		if (!callsignRegex.test(my)) {
+			return null;
+		}
+
+		let timeMatches = dstarusersTimeRegex.exec(cleanCell(cells[1]));
+		if (!timeMatches) {
+			return null;
+		}
+		let time = new Date(Date.UTC(
+			2000 + parseInt(timeMatches[3]), parseInt(timeMatches[1]) - 1, parseInt(timeMatches[2]),
+			parseInt(timeMatches[4]), parseInt(timeMatches[5]), parseInt(timeMatches[6])
+		));
+
+		let node = parseDstarusersNode(cleanCell(cells[2]));
+		if (!node) {
+			return null;
+		}
+
+		let event = node.isReflector
+			? {type: 'active', node: undefined, reflector: node.id}
+			: {type: 'active', node: node.id, reflector: undefined};
+
+		return {
+			feed: 'dstarusers',
+			time,
+			my,
+			ext: callsignMatches[2],
+			msg: cleanCell(cells[3]),
+			band: node.band,
+			nodeKey: node.id,
+			events: [event]
+		};
+	}
+
 	// Classify a heard record into zero or more events
 	classify(record) {
+		// dstarusers.org rows carry no UR/routing field to classify: each row is already a
+		// single ready-made "active" event (see parseDstarusersRow above).
+		if (record.feed === 'dstarusers') {
+			return record.events || [];
+		}
+
 		let events = [];
 
 		if (!callsignRegex.test(record.my)) {
@@ -246,7 +388,9 @@ class DstarReceiver extends EventEmitter {
 	}
 
 	emitEvent(record, event, priming) {
-		let key = `${record.my}|${event.type}|${event.node}|${event.reflector || ''}`;
+		// event.node is undefined for a dstarusers.org reflector row (no module -> no dvNode,
+		// see parseDstarusersRow); fall back to '' so the key doesn't become the string "undefined"
+		let key = `${record.my}|${event.type}|${event.node || ''}|${event.reflector || ''}`;
 		if (this.dedupeCache.has(key)) {
 			return;
 		}
@@ -267,10 +411,14 @@ class DstarReceiver extends EventEmitter {
 			fullCallsign: record.my,
 			mode: 'dstar',
 			dvEvent: event.type,
-			dvNode: event.node,
 			dvFeed: record.feed
 		};
 
+		// Omit dvNode entirely rather than setting it to undefined (a dstarusers.org reflector
+		// row with no module has no node at all)
+		if (event.node) {
+			spot.dvNode = event.node;
+		}
 		if (event.reflector) {
 			spot.dvReflector = event.reflector;
 		}
@@ -278,6 +426,10 @@ class DstarReceiver extends EventEmitter {
 		let gateway = formatNode(record.rpt2);
 		if (gateway) {
 			spot.spotter = gateway.split(' ')[0];
+		} else if (record.feed === 'dstarusers') {
+			// dstarusers.org has no separate gateway field; the reporting node/reflector itself
+			// is the "spotter" (a REF reflector reports through itself, e.g. REF030)
+			spot.spotter = (event.reflector || event.node).split('-')[0];
 		}
 
 		if (record.ext) {
@@ -288,12 +440,18 @@ class DstarReceiver extends EventEmitter {
 			spot.comment = record.msg;
 		}
 
+		// dstarusers.org's reporting-node band text (see parseDstarusersNode); server.js's
+		// normalizeSpot() only uses this when dvNode can't be resolved to a physical frequency
+		if (record.band) {
+			spot.band = record.band;
+		}
+
 		if (record.duration !== undefined) {
 			spot.dvDuration = record.duration;
 		}
 
-		let where = spot.dvNode;
-		if (spot.dvReflector) {
+		let where = spot.dvNode || spot.dvReflector;
+		if (spot.dvNode && spot.dvReflector) {
 			where = `${spot.dvReflector} via ${spot.dvNode}`;
 		}
 
@@ -573,6 +731,104 @@ class IrcddbLiveFeed extends EventEmitter {
 			connectReq.on('timeout', () => connectReq.destroy(new Error('CONNECT timeout')));
 			connectReq.end();
 		});
+	}
+}
+
+/*
+	Polls the dstarusers.org lastheard.php page (a static HTML page, refreshed roughly every
+	30s by DStarMonitor agents; no offset/line-number mechanism), and diffs it against a
+	watermark of the rows seen on the previous poll so that unchanged rows aren't re-emitted.
+
+	Rows for the same callsign/node/time can appear more than once across polls (the page
+	simply reprints whatever DStarMonitor last reported), so the watermark is a Set of
+	"time|callsign|node" keys for the rows seen on the *previous* poll only (rebuilt every
+	poll, not accumulated) plus the newest row time seen, used as a small safety-margin cutoff
+	(dstarusersCutoffSlack) so that a gap (e.g. a missed poll) can't cause very old rows still
+	on the page to be treated as new.
+*/
+const dstarusersCutoffSlack = 5*60*1000;
+
+class DstarusersFeed extends EventEmitter {
+	constructor(options) {
+		super();
+		this.options = options;
+		this.seenKeys = null;	// null until the first poll completes (priming)
+		this.newestTime = null;
+	}
+
+	start() {
+		this.poll();
+		this.timer = setInterval(() => this.poll(), this.options.pollInterval);
+	}
+
+	stop() {
+		clearInterval(this.timer);
+	}
+
+	poll() {
+		if (this.polling) {
+			return;
+		}
+		this.polling = true;
+
+		axios({
+			url: this.options.url,
+			method: 'GET',
+			headers: {'User-Agent': feedUserAgent},
+			responseType: 'text',
+			timeout: this.options.timeout
+		})
+		.then(response => this.handlePage(response.data))
+		.catch(err => {
+			this.emit('error', err);
+		})
+		.then(() => {
+			this.polling = false;
+		});
+	}
+
+	// Split out from poll() so tools/dstarTest.js can replay a saved page through the exact
+	// same watermark logic.
+	handlePage(html) {
+		let records = DstarReceiver.parseDstarusersPage(html);	// newest first, as on the page
+		let priming = (this.seenKeys === null);
+		let cutoff = (!priming && this.newestTime) ? new Date(this.newestTime.getTime() - dstarusersCutoffSlack) : null;
+
+		let newSeenKeys = new Set();
+		let newestTime = this.newestTime;
+		let toEmit = [];
+
+		for (let record of records) {
+			let key = `${record.time.getTime()}|${record.my}|${record.nodeKey}`;
+			newSeenKeys.add(key);
+
+			if (!newestTime || record.time > newestTime) {
+				newestTime = record.time;
+			}
+
+			if (priming || (cutoff && record.time < cutoff) || this.seenKeys.has(key)) {
+				continue;
+			}
+
+			toEmit.push(record);
+		}
+
+		// Emit in chronological order (oldest first); the page lists rows newest first.
+		toEmit.reverse();
+		for (let record of toEmit) {
+			this.emit('record', record, false);
+		}
+
+		if (priming) {
+			let primingRecords = records.slice().reverse();
+			for (let record of primingRecords) {
+				this.emit('record', record, true);
+			}
+			console.log(`D-STAR dstarusers feed primed with ${records.length} rows`);
+		}
+
+		this.seenKeys = newSeenKeys;
+		this.newestTime = newestTime;
 	}
 }
 
