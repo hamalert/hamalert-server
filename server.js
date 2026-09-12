@@ -130,7 +130,9 @@ function startReceivers() {
 function notifySpot(spot) {
 	statsUpdater.countSpot(spot.source);
 	normalizeSpot(spot, (spot) => {
-		let where = (spot.frequency !== undefined) ? `${spot.frequency} MHz` : spot.band;
+		// D-STAR spots without a resolvable frequency (e.g. reflector reports) name the place instead
+		// of a band, which would only ever read "unknown" here
+		let where = (spot.frequency !== undefined) ? `${spot.frequency} MHz` : (spot.mode === 'dstar' ? (spot.dvReflector || spot.dvNode || spot.band) : spot.band);
 		console.log(`Spot: ${spot.time} ${spot.fullCallsign} on ${where} (${spot.mode}), from ${spot.spotter} via ${spot.source}`);
 		
 		if (spot.dxcc && spot.dxcc.dxcc == 344 && !spot.user_id) {
