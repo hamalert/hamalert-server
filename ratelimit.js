@@ -8,7 +8,10 @@ const config = require('./config_loader');
 function dvKey(spot) {
 	if (!spot.dvEvent)
 		return undefined;
-	return `${spot.dvEvent}|${spot.dvReflector || spot.dvNode || ''}`;
+	// Reflector without its module, matching the dedupe key in dstar.js: the same station may be
+	// reported on "REF030-C" by one feed and on plain "REF030" by another
+	let place = spot.dvReflector ? spot.dvReflector.split('-')[0] : (spot.dvNode || '');
+	return `${spot.dvEvent}|${place}`;
 }
 
 class RateLimiter {

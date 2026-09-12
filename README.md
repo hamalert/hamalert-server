@@ -27,7 +27,10 @@ no RBN/cluster feeds). The web app can also be built and run on its own; see its
 active on, or links to, a D-STAR repeater module or reflector module. It tails the public
 "last heard" logs of QuadNet (`openquad.net`) and ircDDB (`live.ircddb.net`), classifies each
 transmission (voice vs. link command; info/echo/unlink commands are ignored) and emits one
-spot per callsign, node, reflector and event type per `config.dstar.dedupeInterval`. A third
+spot per callsign, event type and place per `config.dstar.dedupeInterval`, where the place is the
+reflector callsign (without module) if there is one, else the repeater node. This collapses the
+same transmission reported by several feeds (or on a bare reflector and a reflector module) into
+one alert. A third
 source, dstarusers.org (see below), covers REF/XRF/DCS/XLX reflector activity that QuadNet and
 ircDDB never see.
 

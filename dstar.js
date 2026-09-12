@@ -104,10 +104,13 @@ function parseDstarusersNode(text) {
 	let module = matches[2] || null;
 	let rest = matches[3];
 	let isDongle = /^dongle\b/i.test(rest);
+	let isReflector = dstarusersReflectorPrefixRegex.test(callsign);
 	return {
 		id: module ? `${callsign}-${module}` : callsign,
-		isReflector: dstarusersReflectorPrefixRegex.test(callsign),
-		band: isDongle ? undefined : parseDstarusersBand(rest)
+		isReflector,
+		// The band text only means something for a repeater/gateway ("NS9RC B 440 MHz"); a
+		// reflector module's label ("REF030 C 2 Meters") says nothing about the user's RF band
+		band: (isDongle || isReflector) ? undefined : parseDstarusersBand(rest)
 	};
 }
 
@@ -388,9 +391,13 @@ class DstarReceiver extends EventEmitter {
 	}
 
 	emitEvent(record, event, priming) {
-		// event.node is undefined for a dstarusers.org reflector row (no module -> no dvNode,
-		// see parseDstarusersRow); fall back to '' so the key doesn't become the string "undefined"
-		let key = `${record.my}|${event.type}|${event.node || ''}|${event.reflector || ''}`;
+		// One alert per callsign, event and *place*, regardless of which feed reported it. A
+		// reflector event is keyed by the reflector callsign without its module, so the same
+		// transmission seen by QuadNet ("REF030-C via N4EDO-B"), by dstarusers.org as a module
+		// row ("REF030-C", no node) and as a dongle row ("REF030", no node) all collapse into one.
+		// Events without a reflector are keyed by the node (undefined for none, hence the || '').
+		let place = event.reflector ? event.reflector.split('-')[0] : (event.node || '');
+		let key = `${record.my}|${event.type}|${place}`;
 		if (this.dedupeCache.has(key)) {
 			return;
 		}
