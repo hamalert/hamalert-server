@@ -67,6 +67,13 @@ automatically (the `hamalert-dev` network is left in place so the next run is fa
   reflector-module spots (e.g. `REF030-C`) have no `dvNode`. dstarusers.org also reports
   dongle/hotspot logins with no module at all (e.g. `REF030 Dongle User`) - these are dropped
   and never become spots; a real transmission always shows up as a module row.
+- `config.dstar.reflectorLinks.alwaysWatch` is `['REF030', 'REF058']` in `config-local.js`: the
+  reflector link directory (`dstar_links.js`) always polls these two dashboards locally, in
+  addition to whatever the triggers collection would otherwise ask for, so a repeater-only heard
+  report that resolves to one of them (e.g. `GB7ME-B` currently linked to `REF030-C`) gets its
+  `dvReflector` filled in and matches the seeded "anyone on REF030" trigger even without an
+  explicit trigger naming REF058. See the README's "Reflector link directory" section, and
+  `node tools/dstarTest.js --links REF030,REF058` to test it standalone.
 - The web app, if started, is at http://localhost:8081, same login. Its "Simulate" page posts
   to the simulator through `host.docker.internal`, so it works the same way as the curl above.
 

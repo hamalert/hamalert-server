@@ -71,3 +71,45 @@ page>` (e.g. `tools/fixtures/dstarusers-lastheard.html`).
 Test the node directory lookup on its own (also no database needed): `node
 tools/dstarNodeTest.js <node> [<node> ...]`, e.g. `node tools/dstarNodeTest.js 2E0CMS-B
 W4HFH-C ZZ9ZZZ-C`.
+
+### Reflector link directory
+
+Many D-STAR "heard" reports (both dstarusers.org repeater rows and QuadNet/ircDDB records with
+a blank destination) only name the repeater/hotspot module a callsign was heard on (e.g.
+`GB7ME-B`), even though that module is itself linked to a DPlus REF reflector module (e.g.
+`GB7ME B` linked to `REF030 C`). Without knowing that link, a trigger on the reflector
+(`REF030`) would never fire. `dstar_links.js`'s `ReflectorLinkDirectory` fills this gap by
+periodically scraping each watched REF reflector's own "Linked Gateways" dashboard and building
+a `node -> reflector` map; `dstar.js`'s `DstarReceiver` consults it (synchronously, a plain Map
+lookup) whenever an event has a node but no reflector of its own, filling in `dvReflector` and
+`dvReflectorSource: 'dashboard'` before the spot is built and deduplicated - so e.g. "M3LEE heard
+on GB7ME-B" becomes "M3LEE heard on REF030-C via GB7ME-B".
+
+The watch list is trigger-driven: `server.js` queries the `triggers` collection for every
+distinct base REF callsign (no module letter) named in a `dvReflector` condition, unioned with
+`config.dstar.reflectorLinks.alwaysWatch` (a fixed list, e.g. for local testing). Reflectors are
+re-fetched every `refreshInterval` (default 2 minutes), with bounded concurrency
+(`maxConcurrent`) and a per-reflector `timeout`.
+
+A 2026 survey of the 57 REF reflectors that report to dstarusers.org found three dashboard
+shapes: 50 serve a classic static HTML "Linked Gateways" table (`readers` type `html`, the
+default - one, REF020, sits behind an HTML frameset, which is followed automatically as well as
+via an explicit override), one (REF075) serves an equivalent JSON REST endpoint (`type: 'json'`,
+`gateways: [{callsign, module}]`), and one (REF016) is WebSocket-push only with no HTTP fallback
+at all and is marked `type: 'unsupported'` (watched but never fetched). Five reflectors were
+unreachable on both HTTP and HTTPS at survey time and simply have no data to fetch; they need no
+special configuration.
+
+The directory never lets a broken watch-list query, a hung/unreachable dashboard, or a bad HTTP
+status take down anything: a failing reflector keeps its previously-fetched table (backed off
+for `failureBackoff` before being retried, logged once per failure episode) while every other
+reflector refreshes normally, and `lookup()` itself is a pure, synchronous Map read that never
+throws. Like `dstar_nodes.js`, the merged map is persisted to `dumpFile` so a restart has data
+immediately.
+
+Test it without a database: `node tools/dstarTest.js --links REF030,REF058` (live: builds the
+directory for exactly those reflectors, waits for its first refresh, then runs the feeds as
+usual) or `node tools/dstarTest.js --links-file <html|json> <path> <REF>` (offline: parses a
+saved dashboard body, e.g. under `tools/fixtures/reflectors/`, and prints the resulting map;
+combine with `--file`/`--dstarusers-file` to enrich that replay from the offline directory
+instead).

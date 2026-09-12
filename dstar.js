@@ -156,6 +156,10 @@ class DstarReceiver extends EventEmitter {
 			console.log('D-STAR dedupe is DISABLED (config.dstar.dedupeInterval = 0)');
 		}
 		this.feeds = [];
+		// Optional ReflectorLinkDirectory (see dstar_links.js), passed in by server.js or a
+		// tool; resolves a repeater/hotspot module to the reflector module it is currently
+		// linked to, so a heard record with no reflector of its own can still be alerted on one.
+		this.linkDirectory = this.options.linkDirectory || null;
 	}
 
 	start() {
@@ -411,6 +415,25 @@ class DstarReceiver extends EventEmitter {
 	}
 
 	emitEvent(record, event, priming) {
+		// Resolve a missing reflector from the link directory (see dstar_links.js) BEFORE the
+		// dedupe key is computed and the spot is built, so a repeater-only report ("M3LEE heard
+		// on GB7ME-B", GB7ME-B currently linked to REF030-C) dedupes and reads by reflector, the
+		// same as if the reflector had been reported directly. A "linked" event always carries
+		// its own reflector already, so this only ever applies to "active" events. Never let a
+		// lookup failure break event processing.
+		let linkSource = null;
+		if (event.node && !event.reflector) {
+			try {
+				let link = this.linkDirectory && this.linkDirectory.lookup(event.node);
+				if (link) {
+					event.reflector = link.reflector;
+					linkSource = link.source;
+				}
+			} catch (e) {
+				console.error(`D-STAR reflector link lookup failed for ${event.node}: ${e}`);
+			}
+		}
+
 		// One alert per callsign, event and *place*, regardless of which feed reported it. A
 		// reflector event is keyed by the reflector callsign without its module, so the same
 		// transmission seen by QuadNet ("REF030-C via N4EDO-B") and by dstarusers.org as a
@@ -458,6 +481,9 @@ class DstarReceiver extends EventEmitter {
 		}
 		if (event.reflector) {
 			spot.dvReflector = event.reflector;
+		}
+		if (linkSource) {
+			spot.dvReflectorSource = linkSource;
 		}
 
 		let gateway = formatNode(record.rpt2);

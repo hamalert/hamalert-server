@@ -237,6 +237,32 @@ config.dstar = {
 		refreshInterval: 3600*1000,
 		dumpFile: '/data/hamalert/cache/dstar-nodes.dump'
 	},
+	// D-STAR reflector link directory (see dstar_links.js): resolves a repeater/hotspot module
+	// (e.g. "GB7ME-B") to the DPlus REF reflector module it is currently linked to (e.g.
+	// "REF030-C") by scraping REF reflector dashboards, so a heard record naming only the
+	// repeater still alerts on a reflector trigger. Watched reflectors come from the triggers
+	// collection's dvReflector conditions (see server.js's getWatchedReflectors), plus alwaysWatch.
+	reflectorLinks: {
+		disabled: false,
+		urlTemplate: 'http://{ref}.dstargateway.org/',
+		refreshInterval: 120000,
+		timeout: 10000,
+		failureBackoff: 600000,
+		maxConcurrent: 3,
+		alwaysWatch: [],
+		// Per-reflector overrides, straight from the dashboard survey (2026-09):
+		readers: {
+			// Root "/" is an HTML frameset; the classic Linked Gateways table is one hop deeper,
+			// at /status.html. The generic reader follows the frameset automatically, but the
+			// override is kept as documentation (and as a direct fallback if that ever changes).
+			REF020: {url: 'http://ref020.dstargateway.org/status.html'},
+			// A "DREFD" JSON dashboard instead of a classic HTML table: gateways: [{callsign, module}]
+			REF075: {type: 'json', url: 'https://ref075.dstargateway.org/api.php'},
+			// WebSocket-push only (wss://.../ws); no HTTP fallback at all, so there is nothing to scrape
+			REF016: {type: 'unsupported'}
+		},
+		dumpFile: '/data/hamalert/cache/dstar-links.dump'
+	},
 	dedupeInterval: 15*60*1000,		// one alert per callsign, event and place (reflector without module, else node) within this window
 	maxAge: 10*60*1000,				// ignore records older than this
 	headerMergeInterval: 10*60*1000,	// how long to remember ircDDB header records (TX message) for their stats record
