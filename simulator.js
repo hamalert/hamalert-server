@@ -21,11 +21,12 @@ const hamutil = require('./hamutil');
 
 	D-STAR presence spots carry dvEvent ("active" or "linked"), dvNode (e.g. "W4HFH-C") and
 	optionally dvReflector (e.g. "REF030-C") instead of a frequency; frequency is optional and,
-	if omitted, is resolved by server.js from the D-STAR node directory:
+	if omitted, is resolved by server.js from the D-STAR node directory. Source names the feed
+	that would have reported it (quadnet/ircddb/dstarusers); mode is always "dstar":
 
 	{
 		"user_id": "586ff45b10a3c6d9c2bb11cf",
-		"source": "dstar",
+		"source": "quadnet",
 		"fullCallsign": "HB9DQM",
 		"mode": "dstar",
 		"dvEvent": "active",
@@ -50,7 +51,9 @@ class SimulatorReceiver extends EventEmitter {
 	}
 	
 	handleSendSpot(req, res) {
-		let isDstar = (req.body.source === 'dstar');
+		// D-STAR is keyed by mode, not source: source now names the feed (quadnet/ircddb/
+		// dstarusers), all three of which carry mode 'dstar'.
+		let isDstar = (req.body.mode === 'dstar');
 		if (!req.body.user_id || !req.body.source || !req.body.fullCallsign || !req.body.mode ||
 			(isDstar ? !req.body.dvNode : !req.body.frequency)) {
 			res.status(400).end();

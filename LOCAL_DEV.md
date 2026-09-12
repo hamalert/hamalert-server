@@ -49,7 +49,7 @@ automatically (the `hamalert-dev` network is left in place so the next run is fa
 - Simulate a spot (the banner prints the exact command with the real `user_id`):
   ```sh
   curl -X POST http://127.0.0.1:1983/sendSpot -H 'Content-Type: application/json' -d '{
-    "user_id": "<user_id>", "source": "dstar", "fullCallsign": "HB9DQM", "mode": "dstar",
+    "user_id": "<user_id>", "source": "quadnet", "fullCallsign": "HB9DQM", "mode": "dstar",
     "dvEvent": "active", "dvNode": "HB9DQM-B", "dvReflector": "REF030-C"
   }'
   ```
@@ -59,11 +59,14 @@ automatically (the `hamalert-dev` network is left in place so the next run is fa
   `HB9DQM-B`); if a node isn't listed there, the band is guessed from the module letter
   (A = 23cm, B = 70cm, C = 2m, flagged `bandIsGuessed`), otherwise `band` is `"unknown"`.
 - Live D-STAR spots from the real QuadNet/ircDDB feeds appear in the server log as
-  `Spot: ... (dstar), from <gateway> via dstar` once someone transmits (usually within a
-  minute or two). These are real network feeds; the ircDDB one may need a proxy on restricted
-  networks (see `config-local.js`'s `dstar.ircddb.connectProxy`). A third feed polls
-  dstarusers.org every 30s for REF/XRF/DCS/XLX reflector activity (`dstar.dstarusers`); its
-  spots for hotspot/dongle users have a `dvReflector` but no `dvNode`.
+  `Spot: ... (dstar), from <gateway> via quadnet` (or `via ircddb`) once someone transmits
+  (usually within a minute or two); `source` names the feed, `mode` is always `dstar`. These are
+  real network feeds; the ircDDB one may need a proxy on restricted networks (see
+  `config-local.js`'s `dstar.ircddb.connectProxy`). A third feed polls dstarusers.org every 30s
+  for REF/XRF/DCS/XLX reflector activity (`dstar.dstarusers`, `source: 'dstarusers'`); its
+  reflector-module spots (e.g. `REF030-C`) have no `dvNode`. dstarusers.org also reports
+  dongle/hotspot logins with no module at all (e.g. `REF030 Dongle User`) - these are dropped
+  and never become spots; a real transmission always shows up as a module row.
 - The web app, if started, is at http://localhost:8081, same login. Its "Simulate" page posts
   to the simulator through `host.docker.internal`, so it works the same way as the curl above.
 

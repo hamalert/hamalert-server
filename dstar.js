@@ -29,8 +29,11 @@ const TTLCache = require('@isaacs/ttlcache');
 	  has no offset/line-number mechanism. Unlike the other two sources this only carries
 	  presence directly (no UR/routing field to classify), so each row maps straight to a
 	  single "active" event; there is no "linked" event and no voice-duration filtering.
-	  A reflector row with no module (a dongle/hotspot user reported by the reflector itself)
-	  produces a dvReflector with no module letter and no dvNode at all.
+	  A reporting node with no module letter (e.g. "REF030 Dongle User") is a DPlus/dongle/
+	  hotspot login, not a transmission: the reflector has no way to know which module a
+	  merely-listening user is on. These rows are dropped entirely (see parseDstarusersNode);
+	  when such a user transmits, a proper module row follows (e.g. "REF030 C ...") and is
+	  reported as usual.
 
 	Repeater/node and reflector identifiers are normalized to "<callsign>-<module>" (e.g. W4HFH-C,
 	REF030-C); the module letter is omitted if there is none.
@@ -93,7 +96,14 @@ function parseDstarusersBand(text) {
 }
 
 // Parse a "Reporting Node" cell into its callsign/module/band, and whether it names a
-// reflector (REF/XRF/DCS/XLX) or a repeater/gateway. Returns null if unparseable.
+// reflector (REF/XRF/DCS/XLX) or a repeater/gateway. Returns null if unparseable, OR if the
+// node has no module letter at all (e.g. "REF030 Dongle User", "W5FC Dongle User"): DStarMonitor
+// reports a dongle/hotspot login this way, without a module, because the reflector/gateway has
+// no way to know which module a merely-listening user is on - this is not a transmission and
+// must not become a record. When such a user actually transmits, a proper module row follows
+// (e.g. "REF030 C ...") and is parsed normally. So only two shapes survive here: a reflector
+// module ("REF030 C 2 Meters" -> id "REF030-C", no node) and a repeater/gateway module
+// ("NS9RC B 440 MHz" -> id "NS9RC-B", band from the text).
 function parseDstarusersNode(text) {
 	let stripped = text.replace(/\s+DVD$/i, '');
 	let matches = dstarusersNodeRegex.exec(stripped);
@@ -101,16 +111,18 @@ function parseDstarusersNode(text) {
 		return null;
 	}
 	let callsign = matches[1];
-	let module = matches[2] || null;
+	let module = matches[2];
+	if (!module) {
+		return null;
+	}
 	let rest = matches[3];
-	let isDongle = /^dongle\b/i.test(rest);
 	let isReflector = dstarusersReflectorPrefixRegex.test(callsign);
 	return {
-		id: module ? `${callsign}-${module}` : callsign,
+		id: `${callsign}-${module}`,
 		isReflector,
 		// The band text only means something for a repeater/gateway ("NS9RC B 440 MHz"); a
 		// reflector module's label ("REF030 C 2 Meters") says nothing about the user's RF band
-		band: (isDongle || isReflector) ? undefined : parseDstarusersBand(rest)
+		band: isReflector ? undefined : parseDstarusersBand(rest)
 	};
 }
 
@@ -300,7 +312,11 @@ class DstarReceiver extends EventEmitter {
 			time,
 			my,
 			ext: callsignMatches[2],
-			msg: cleanCell(cells[3]),
+			// The Location column names the reporting node/reflector's own town, not the
+			// operator's - meaningful for a repeater ("Vero Beach, Fl, USA" for NS9RC) but not
+			// for a reflector module (that's just wherever the reflector server is hosted), so
+			// only keep it for repeater rows.
+			msg: node.isReflector ? undefined : cleanCell(cells[3]),
 			band: node.band,
 			nodeKey: node.id,
 			events: [event]
@@ -397,8 +413,8 @@ class DstarReceiver extends EventEmitter {
 	emitEvent(record, event, priming) {
 		// One alert per callsign, event and *place*, regardless of which feed reported it. A
 		// reflector event is keyed by the reflector callsign without its module, so the same
-		// transmission seen by QuadNet ("REF030-C via N4EDO-B"), by dstarusers.org as a module
-		// row ("REF030-C", no node) and as a dongle row ("REF030", no node) all collapse into one.
+		// transmission seen by QuadNet ("REF030-C via N4EDO-B") and by dstarusers.org as a
+		// module row ("REF030-C", no node) collapses into one.
 		// Events without a reflector are keyed by the node (undefined for none, hence the || '').
 		let place = event.reflector ? event.reflector.split('-')[0] : (event.node || '');
 		let key = `${record.my}|${event.type}|${place}`;
@@ -424,13 +440,15 @@ class DstarReceiver extends EventEmitter {
 		}
 
 		let spot = {
-			source: 'dstar',
+			// The source names the feed that reported this spot (quadnet/ircddb/dstarusers);
+			// mode stays 'dstar' for all three so triggers/UI can treat D-STAR as one thing
+			// while still being able to filter or display which feed saw it.
+			source: record.feed,
 			time: record.time.toISOString().substring(11, 16),
 			date: record.time,
 			fullCallsign: record.my,
 			mode: 'dstar',
-			dvEvent: event.type,
-			dvFeed: record.feed
+			dvEvent: event.type
 		};
 
 		// Omit dvNode entirely rather than setting it to undefined (a dstarusers.org reflector

@@ -29,14 +29,16 @@ active on, or links to, a D-STAR repeater module or reflector module. It tails t
 transmission (voice vs. link command; info/echo/unlink commands are ignored) and emits one
 spot per callsign, event type and place per `config.dstar.dedupeInterval`, where the place is the
 reflector callsign (without module) if there is one, else the repeater node. This collapses the
-same transmission reported by several feeds (or on a bare reflector and a reflector module) into
-one alert. A third
+same transmission reported by several feeds into one alert. A third
 source, dstarusers.org (see below), covers REF/XRF/DCS/XLX reflector activity that QuadNet and
 ircDDB never see.
 
-Spots have `source: 'dstar'`, `mode: 'dstar'`, and the fields `dvEvent` (`active` or `linked`),
+Spots have `mode: 'dstar'` and `source` set to the name of the feed that reported them
+(`quadnet`, `ircddb` or `dstarusers`), plus the fields `dvEvent` (`active` or `linked`),
 `dvNode` (e.g. `W4HFH-C`) and `dvReflector` (e.g. `REF030-C`). The matcher accepts
-`dvNode`/`dvReflector` conditions with or without the module letter.
+`dvNode`/`dvReflector` conditions with or without the module letter. A trigger with no `source`
+condition matches D-STAR spots from any of the three feeds; use `mode: 'dstar'` (or leave source
+unset) rather than a specific feed name to match D-STAR generally.
 
 `dstar.js` itself carries no frequency; `server.js` resolves frequency/band from the QuadNet
 (`openquad.net`) and ircDDB (`status.ircddb.net`) repeater lists (`dstar_nodes.js`), keyed by
@@ -54,11 +56,13 @@ measured against dstarusers.org. Each row is diffed against a watermark of previ
 (the page has no offset/line-number mechanism) and maps straight to a single `active` event; the
 first poll only primes this watermark and emits nothing.
 
-A row naming a bare reflector with no module (e.g. `REF030`) is a hotspot/dongle user reported
-by the reflector itself, which has no way to know which module they're on; it becomes a spot
-with `dvReflector` but no `dvNode` at all. So that these aren't missed, `runMatcher()` expands a
-module-less `dvReflector` condition to match every module (`REF030`, `REF030-A` .. `REF030-E`),
-meaning a module-specific trigger like `REF030-C` also fires for them.
+A row naming a bare reflector or gateway with no module (e.g. `REF030 Dongle User`) is a
+DPlus/dongle/hotspot login, not a transmission - the reflector has no way to know which module a
+merely-listening user is on. These rows are dropped entirely and produce no spot; when such a
+user actually transmits, a proper module row follows (e.g. `REF030 C ...`) and is reported as
+usual. So only reflector-module rows (`REF030 C 2 Meters` -> `dvReflector: 'REF030-C'`, no
+`dvNode`) and repeater rows (`NS9RC B 440 MHz` -> `dvNode: 'NS9RC-B'`, band from the text) ever
+become spots.
 
 Test without a database: `node tools/dstarTest.js` (live feeds), `node tools/dstarTest.js --file
 <saved QuadNet/ircDDB log>`, or `node tools/dstarTest.js --dstarusers-file <saved lastheard.php

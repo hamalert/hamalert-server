@@ -236,7 +236,7 @@ function buildAndRunWebApp(dryRun) {
 }
 
 function printBanner({userId, webStarted, dryRun}) {
-	let curl = `curl -X POST http://127.0.0.1:1983/sendSpot -H 'Content-Type: application/json' -d '{"user_id":"${userId}","source":"dstar","fullCallsign":"HB9DQM","mode":"dstar","dvEvent":"active","dvNode":"HB9DQM-B","dvReflector":"REF030-C"}'`;
+	let curl = `curl -X POST http://127.0.0.1:1983/sendSpot -H 'Content-Type: application/json' -d '{"user_id":"${userId}","source":"quadnet","fullCallsign":"HB9DQM","mode":"dstar","dvEvent":"active","dvNode":"HB9DQM-B","dvReflector":"REF030-C"}'`;
 
 	console.log('');
 	console.log('============================================================');
@@ -254,7 +254,7 @@ function printBanner({userId, webStarted, dryRun}) {
 	console.log(`   ${curl}`);
 	console.log('');
 	console.log(' Live D-STAR spots from the QuadNet/ircDDB feeds appear in the server log as');
-	console.log(' "... via dstar" within a minute or two of someone transmitting.');
+	console.log(' "... via quadnet"/"... via ircddb" (mode dstar) within a minute or two of someone transmitting.');
 	console.log('============================================================');
 	console.log('');
 }

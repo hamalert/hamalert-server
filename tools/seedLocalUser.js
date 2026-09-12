@@ -38,7 +38,9 @@ async function main() {
 
 	await db.collection('triggers').insertOne({
 		user_id: userId,
-		conditions: {callsign: username, source: 'dstar', dvEvent: 'active'},
+		// mode, not source: source now names the feed (quadnet/ircddb/dstarusers), and this
+		// trigger should match a callsign heard on D-STAR regardless of which feed reported it.
+		conditions: {callsign: username, mode: 'dstar', dvEvent: 'active'},
 		actions: ['telnet', 'app'],
 		comment: 'local test: my callsign on D-STAR'
 	});
@@ -52,7 +54,7 @@ async function main() {
 
 	console.log(`User ${username} (password "${password}") created with _id ${userId}`);
 	console.log(`Two triggers (telnet + app actions) created. Simulate a spot with:`);
-	console.log(`curl -X POST http://127.0.0.1:1983/sendSpot -H 'Content-Type: application/json' -d '{"user_id":"${userId}","source":"dstar","fullCallsign":"${username}","mode":"dstar","dvEvent":"active","dvNode":"${username}-B","dvReflector":"REF030-C"}'`);
+	console.log(`curl -X POST http://127.0.0.1:1983/sendSpot -H 'Content-Type: application/json' -d '{"user_id":"${userId}","source":"quadnet","fullCallsign":"${username}","mode":"dstar","dvEvent":"active","dvNode":"${username}-B","dvReflector":"REF030-C"}'`);
 	await client.close();
 
 	// Machine-readable, for tools/localDev.js to pick up (keep this the last line of output)

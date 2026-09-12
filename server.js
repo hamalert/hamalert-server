@@ -183,15 +183,7 @@ function runMatcher(spot) {
 		conditions.dvNode = [spot.dvNode, spot.dvNode.split('-')[0]];
 	}
 	if (spot.dvReflector) {
-		if (spot.dvReflector.includes('-')) {
-			conditions.dvReflector = [spot.dvReflector, spot.dvReflector.split('-')[0]];
-		} else {
-			// A module-less reflector report (a dstarusers.org dongle/hotspot user, reported
-			// by the reflector itself with no module) should also match a module-specific
-			// trigger: the user could be on any module, we just don't know which.
-			let ref = spot.dvReflector;
-			conditions.dvReflector = [ref, `${ref}-A`, `${ref}-B`, `${ref}-C`, `${ref}-D`, `${ref}-E`];
-		}
+		conditions.dvReflector = [spot.dvReflector, spot.dvReflector.split('-')[0]];
 	}
 	
 	// Add special values 'hf', 'vhf' and 'uhf' to band (only for spots that have a frequency;
@@ -384,9 +376,9 @@ function normalizeSpot(spot, callback) {
 
 	// D-STAR: make sure every spot has a spotter, even without a gateway (rpt2) callsign,
 	// before we compute the spotter prefix below. A reflector-only spot (no dvNode, e.g. a
-	// dstarusers.org dongle/hotspot report via a bare REF reflector) falls back to the
-	// reflector callsign instead.
-	if (spot.source === 'dstar' && !spot.spotter) {
+	// dstarusers.org reflector-module report) falls back to the reflector callsign instead.
+	// Checked via mode (not source), since source now names the feed (quadnet/ircddb/dstarusers).
+	if (spot.mode === 'dstar' && !spot.spotter) {
 		if (spot.dvNode) {
 			spot.spotter = spot.dvNode.split('-')[0];
 		} else if (spot.dvReflector) {
@@ -405,11 +397,10 @@ function normalizeSpot(spot, callback) {
 	// D-STAR: no frequency comes with the spot (see dstar.js); resolve it from the QuadNet/
 	// ircDDB node directory by repeater module, or fall back to guessing the band from the
 	// module letter convention (A = 23cm, B = 70cm, C = 2m). A spot with no dvNode at all
-	// (a dstarusers.org reflector report, e.g. a dongle/hotspot user or a reflector module)
-	// has no repeater to look up; keep the band the feed already derived from the reporting
-	// node's band text (see dstar.js), or "unknown" if it didn't have one either (e.g. a
-	// module-less dongle report).
-	if (spot.source === 'dstar' && spot.frequency === undefined) {
+	// (a dstarusers.org reflector-module report) has no repeater to look up; keep the band
+	// the feed already derived from the reporting node's band text (see dstar.js), or
+	// "unknown" if it didn't have one either.
+	if (spot.mode === 'dstar' && spot.frequency === undefined) {
 		if (spot.dvNode) {
 			let nodeInfo = dstarNodeDirectory.lookup(spot.dvNode);
 			if (nodeInfo) {
