@@ -104,3 +104,5 @@ server; you can do the same by hand for any other config file, e.g.
   those feeds need a real callsign login.
 - Threema, mail and crash-notify mail are configured with obvious placeholder credentials and
   are not exercised by this setup.
+- Rate limiting is disabled: `config.rateLimit.disabled` is `true` in `config-local.js`, so
+  every matching spot triggers an alert regardless of `limit`/`limitPerCallsign*` settings.

@@ -248,6 +248,7 @@ function printBanner({userId, webStarted, dryRun}) {
 		console.log(' Web app:   not started (see notice above; use --no-web to silence it)');
 	}
 	console.log(` Telnet:    nc 127.0.0.1 7300  (login: HB9DQM / testpass123)`);
+	console.log(' Rate limiting is disabled in local-dev (config-local.js rateLimit.disabled)');
 	console.log('');
 	console.log(' Simulate a D-STAR spot for the seeded user:');
 	console.log(`   ${curl}`);

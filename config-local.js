@@ -45,7 +45,8 @@ config.rateLimit = {
 	dumpFile: path.join(__dirname, '.local', 'cache', 'ratelimit.dump'),
 	maxFrequencyDiff: 0.0004,
 	maxFrequencyDiffDigi: 0.003,
-	digiModes: ['psk', 'rtty', 'jt', 'msk', 'ft2', 'ft4', 'ft8', 'js8', 'qra64', 'iscat', 'fsk441', 't10', 'q65', 'sstv', 'varac', 'olivia', 'fst4']
+	digiModes: ['psk', 'rtty', 'jt', 'msk', 'ft2', 'ft4', 'ft8', 'js8', 'qra64', 'iscat', 'fsk441', 't10', 'q65', 'sstv', 'varac', 'olivia', 'fst4'],
+	disabled: true	// local development: never rate-limit alerts, so every matching spot is visible
 };
 
 config.limitLog = {
