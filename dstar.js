@@ -398,10 +398,16 @@ class DstarReceiver extends EventEmitter {
 		// Events without a reflector are keyed by the node (undefined for none, hence the || '').
 		let place = event.reflector ? event.reflector.split('-')[0] : (event.node || '');
 		let key = `${record.my}|${event.type}|${place}`;
-		if (this.dedupeCache.has(key)) {
+		// Suppress repeats within dedupeInterval of the previous record's *own* time, not of
+		// the time we saw it: at startup the feeds are primed with up to an hour of old records,
+		// and those must only suppress alerts within their own window (a station heard 40
+		// minutes before a restart must not stay silent for 15 minutes after it). This also
+		// makes file replays (tools/dstarTest.js) behave like the live feeds.
+		let previous = this.dedupeCache.get(key);
+		if (previous !== undefined && (record.time - previous) < this.options.dedupeInterval) {
 			return;
 		}
-		this.dedupeCache.set(key, true);
+		this.dedupeCache.set(key, record.time.getTime());
 
 		if (priming) {
 			return;	// only fill the dedupe cache with what was already in the log at startup
