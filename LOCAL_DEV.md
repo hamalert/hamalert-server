@@ -111,7 +111,9 @@ server; you can do the same by hand for any other config file, e.g.
   are not exercised by this setup.
 - Rate limiting is disabled: `config.rateLimit.disabled` is `true` in `config-local.js`, so
   every matching spot triggers an alert regardless of `limit`/`limitPerCallsign*` settings.
-- D-STAR dedupe is disabled: `config.dstar.dedupeInterval` is `0` in `config-local.js`
-  (production: 15 minutes), so every transmission alerts, including the same station
-  reported by two feeds. Records already in the logs when the server starts are still
-  skipped.
+- The D-STAR dedupe window (`config.dstar.dedupeInterval`) is 2 minutes in `config-local.js`
+  (production: 15 minutes): long enough to collapse one transmission reported by two feeds
+  (their timestamps differ by up to a minute), short enough that keying up again after two
+  minutes alerts again. Set it to `0` for no suppression at all (then a station seen by QuadNet
+  and dstarusers.org alerts twice). Records already in the logs when the server starts only
+  prime the window.

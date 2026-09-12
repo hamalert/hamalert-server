@@ -148,7 +148,7 @@ config.dstar = {
 		refreshInterval: 3600*1000,
 		dumpFile: path.join(__dirname, '.local', 'cache', 'dstar-nodes.dump')
 	},
-	dedupeInterval: 0,				// local development: NO suppression at all (production: 15 min, one alert per callsign, event and place)
+	dedupeInterval: 2*60*1000,		// local development: 2 minutes, just enough to collapse the same transmission reported by two feeds (their timestamps differ by up to a minute) while letting a repeated test alert again quickly (production: 15 min)
 	maxAge: 10*60*1000,				// ignore records older than this
 	headerMergeInterval: 10*60*1000,	// how long to remember ircDDB header records (TX message) for their stats record
 	minVoiceDuration: 2,				// seconds; shorter transmissions are not considered voice
