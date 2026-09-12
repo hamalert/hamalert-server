@@ -138,7 +138,11 @@ class DstarReceiver extends EventEmitter {
 	constructor(options) {
 		super();
 		this.options = Object.assign({}, config.dstar, options);
-		this.dedupeCache = new TTLCache({ttl: this.options.dedupeInterval});
+		// dedupeInterval 0 (local development) disables suppression entirely
+		this.dedupeCache = this.options.dedupeInterval > 0 ? new TTLCache({ttl: this.options.dedupeInterval}) : null;
+		if (!this.dedupeCache) {
+			console.log('D-STAR dedupe is DISABLED (config.dstar.dedupeInterval = 0)');
+		}
 		this.feeds = [];
 	}
 
@@ -403,11 +407,13 @@ class DstarReceiver extends EventEmitter {
 		// and those must only suppress alerts within their own window (a station heard 40
 		// minutes before a restart must not stay silent for 15 minutes after it). This also
 		// makes file replays (tools/dstarTest.js) behave like the live feeds.
-		let previous = this.dedupeCache.get(key);
-		if (previous !== undefined && (record.time - previous) < this.options.dedupeInterval) {
-			return;
+		if (this.dedupeCache) {
+			let previous = this.dedupeCache.get(key);
+			if (previous !== undefined && (record.time - previous) < this.options.dedupeInterval) {
+				return;
+			}
+			this.dedupeCache.set(key, record.time.getTime());
 		}
-		this.dedupeCache.set(key, record.time.getTime());
 
 		if (priming) {
 			return;	// only fill the dedupe cache with what was already in the log at startup

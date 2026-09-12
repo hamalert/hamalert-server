@@ -108,3 +108,7 @@ server; you can do the same by hand for any other config file, e.g.
   are not exercised by this setup.
 - Rate limiting is disabled: `config.rateLimit.disabled` is `true` in `config-local.js`, so
   every matching spot triggers an alert regardless of `limit`/`limitPerCallsign*` settings.
+- D-STAR dedupe is disabled: `config.dstar.dedupeInterval` is `0` in `config-local.js`
+  (production: 15 minutes), so every transmission alerts, including the same station
+  reported by two feeds. Records already in the logs when the server starts are still
+  skipped.
