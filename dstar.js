@@ -4,6 +4,7 @@ const axios = require('axios');
 const http = require('http');
 const TTLCache = require('@isaacs/ttlcache');
 const DstarNodeDirectory = require('./dstar_nodes');
+const ReflectorLinkDirectory = require('./dstar_links');
 
 /*
 	D-STAR presence receiver
@@ -160,19 +161,38 @@ function getNodeDirectory() {
 }
 
 class DstarReceiver extends EventEmitter {
+	// options.db: the MongoDB handle (see server.js), used only to build our own
+	// ReflectorLinkDirectory (below); never merged into this.options, so it can't leak into
+	// anything that serializes or logs it.
+	// options.linkDirectory: an already-built ReflectorLinkDirectory, e.g. from a tool that
+	// wants a specific offline or live-but-limited one; takes priority over building our own.
 	constructor(options) {
 		super();
+		let db = (options && options.db) || null;
+		let providedLinkDirectory = options && options.linkDirectory;
 		this.options = Object.assign({}, config.dstar, options);
+		delete this.options.db;
+		delete this.options.linkDirectory;
 		// dedupeInterval 0 (local development) disables suppression entirely
 		this.dedupeCache = this.options.dedupeInterval > 0 ? new TTLCache({ttl: this.options.dedupeInterval}) : null;
 		if (!this.dedupeCache) {
 			console.log('D-STAR dedupe is DISABLED (config.dstar.dedupeInterval = 0)');
 		}
 		this.feeds = [];
-		// Optional ReflectorLinkDirectory (see dstar_links.js), passed in by server.js or a
-		// tool; resolves a repeater/hotspot module to the reflector module it is currently
-		// linked to, so a heard record with no reflector of its own can still be alerted on one.
-		this.linkDirectory = this.options.linkDirectory || null;
+		// ReflectorLinkDirectory (see dstar_links.js) resolves a repeater/hotspot module to the
+		// reflector module it is currently linked to, so a heard record with no reflector of its
+		// own can still be alerted on one. Use one passed in (tools rely on this), else build our
+		// own (watching whatever the triggers collection asks for) unless reflector links are
+		// disabled, else none at all.
+		this.ownsLinkDirectory = false;
+		if (providedLinkDirectory) {
+			this.linkDirectory = providedLinkDirectory;
+		} else if (this.options.reflectorLinks && !this.options.reflectorLinks.disabled) {
+			this.linkDirectory = new ReflectorLinkDirectory(this.options.reflectorLinks, () => ReflectorLinkDirectory.watchedReflectorsFromTriggers(db));
+			this.ownsLinkDirectory = true;
+		} else {
+			this.linkDirectory = null;
+		}
 		// Start the node/reflector frequency directory refreshing now, so it has data by the
 		// time the first spot needs enriching.
 		getNodeDirectory();
@@ -254,6 +274,9 @@ class DstarReceiver extends EventEmitter {
 			feed.stop();
 		}
 		this.feeds = [];
+		if (this.ownsLinkDirectory && this.linkDirectory) {
+			this.linkDirectory.stop();
+		}
 	}
 
 	// Parse a QuadNet "ics" log line into a heard record (or null)

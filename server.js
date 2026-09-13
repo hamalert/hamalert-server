@@ -6,7 +6,6 @@ const PskReporterReceiver = require('./pskreporter');
 const ClusterReceiver = require('./cluster');
 const SimulatorReceiver = require('./simulator');
 const DstarReceiver = require('./dstar');
-const ReflectorLinkDirectory = require('./dstar_links');
 //const EmailNotifier = require('./notify/email');
 const ThreemaNotifier = require('./notify/threema');
 const URLNotifier = require('./notify/url');
@@ -78,39 +77,6 @@ client.connect((err) => {
 
 const redis = new Redis(config.redis.server);
 
-const refReflectorRegex = /^REF\d{3}$/;
-
-// Which REF reflectors to watch for link-table changes (see dstar_links.js): every distinct
-// base REF callsign (no module letter) named in any trigger's dvReflector condition. A
-// condition value may be a plain string or an array (either from how the trigger was saved, or
-// from server.js's own matcher-side normalization); either way we only want bare "REFnnn"
-// values, uppercased and with any "-X" module letter stripped.
-function getWatchedReflectors() {
-	if (!db) {
-		return Promise.resolve([]);
-	}
-	return db.collection('triggers').distinct('conditions.dvReflector')
-	.then(values => {
-		let refs = new Set();
-		for (let value of values) {
-			for (let item of (Array.isArray(value) ? value : [value])) {
-				if (typeof item !== 'string') {
-					continue;
-				}
-				let base = item.toUpperCase().split('-')[0];
-				if (refReflectorRegex.test(base)) {
-					refs.add(base);
-				}
-			}
-		}
-		return Array.from(refs);
-	})
-	.catch(err => {
-		console.error(`D-STAR reflector links: failed to query watched reflectors from triggers: ${err}`);
-		return [];
-	});
-}
-
 function startReceivers() {
 	let spotReceiver = new SotaSpotReceiver(db);
 	spotReceiver.on('spot', notifySpot);
@@ -141,11 +107,7 @@ function startReceivers() {
 	simulatorReceiver.start();
 
 	if (config.dstar && !config.dstar.disabled) {
-		let linkDirectory = null;
-		if (config.dstar.reflectorLinks && !config.dstar.reflectorLinks.disabled) {
-			linkDirectory = new ReflectorLinkDirectory(config.dstar.reflectorLinks, getWatchedReflectors);
-		}
-		let dstarReceiver = new DstarReceiver(linkDirectory ? {linkDirectory} : undefined);
+		let dstarReceiver = new DstarReceiver({db});
 		dstarReceiver.on('spot', notifySpot);
 		dstarReceiver.start();
 	}

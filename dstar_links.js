@@ -14,7 +14,7 @@ const path = require('path');
 	Every DPlus REF reflector publishes its current link table ("Linked Gateways") on its own
 	dashboard, normally at http://refNNN.dstargateway.org/. This module polls the dashboards of
 	whichever REF reflectors are actually being watched (derived from trigger conditions, see
-	server.js's getWatchedReflectors, plus a fixed config.dstar.reflectorLinks.alwaysWatch list)
+	watchedReflectorsFromTriggers() below, plus a fixed config.dstar.reflectorLinks.alwaysWatch list)
 	and builds a single Map from repeater/hotspot node ("GB7ME-B") to the reflector module it is
 	currently linked to ("REF030-C"). dstar.js's DstarReceiver consults this map (synchronously,
 	see lookup() below) to fill in a missing dvReflector before a spot is built.
@@ -50,6 +50,8 @@ const path = require('path');
 const userAgent = 'HamAlert/1.0 (+https://hamalert.org)';
 
 const moduleHeaderTexts = ['MODULE A', 'MODULE B', 'MODULE C', 'MODULE D', 'MODULE E'];
+
+const refReflectorRegex = /^REF\d{3}$/;
 
 // A populated "Linked Gateways" cell, once cleaned: the linked node's callsign and its own
 // module letter, e.g. "GB7ME  B" -> {call: 'GB7ME', module: 'B'}
@@ -283,6 +285,37 @@ class ReflectorLinkDirectory {
 			clearInterval(this.timer);
 			this.timer = null;
 		}
+	}
+
+	// Which REF reflectors to watch for link-table changes: every distinct base REF callsign (no
+	// module letter) named in any trigger's dvReflector condition. A condition value may be a
+	// plain string or an array (either from how the trigger was saved, or from server.js's own
+	// matcher-side normalization); either way we only want bare "REFnnn" values, uppercased and
+	// with any "-X" module letter stripped.
+	static watchedReflectorsFromTriggers(db) {
+		if (!db) {
+			return Promise.resolve([]);
+		}
+		return db.collection('triggers').distinct('conditions.dvReflector')
+		.then(values => {
+			let refs = new Set();
+			for (let value of values) {
+				for (let item of (Array.isArray(value) ? value : [value])) {
+					if (typeof item !== 'string') {
+						continue;
+					}
+					let base = item.toUpperCase().split('-')[0];
+					if (refReflectorRegex.test(base)) {
+						refs.add(base);
+					}
+				}
+			}
+			return Array.from(refs);
+		})
+		.catch(err => {
+			console.error(`D-STAR reflector links: failed to query watched reflectors from triggers: ${err}`);
+			return [];
+		});
 	}
 
 	// Synchronous, pure Map lookup - never does I/O and never throws. Returns

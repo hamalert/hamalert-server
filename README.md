@@ -86,9 +86,10 @@ lookup) whenever an event has a node but no reflector of its own, filling in `dv
 `dvReflectorSource: 'dashboard'` before the spot is built and deduplicated - so e.g. "M3LEE heard
 on GB7ME-B" becomes "M3LEE heard on REF030-C via GB7ME-B".
 
-The watch list is trigger-driven: `server.js` queries the `triggers` collection for every
-distinct base REF callsign (no module letter) named in a `dvReflector` condition, unioned with
-`config.dstar.reflectorLinks.alwaysWatch` (a fixed list, e.g. for local testing). Reflectors are
+The watch list is trigger-driven: `ReflectorLinkDirectory.watchedReflectorsFromTriggers()` queries
+the `triggers` collection for every distinct base REF callsign (no module letter) named in a
+`dvReflector` condition, unioned with `config.dstar.reflectorLinks.alwaysWatch` (a fixed list,
+e.g. for local testing). Reflectors are
 re-fetched every `refreshInterval` (default 2 minutes), with bounded concurrency
 (`maxConcurrent`) and a per-reflector `timeout`.
 
