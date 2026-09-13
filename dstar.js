@@ -217,17 +217,17 @@ class DstarReceiver extends EventEmitter {
 
 		// No frequency comes with the spot itself; resolve it from the QuadNet/ircDDB node
 		// directory by repeater module, or fall back to guessing the band from the module letter
-		// convention (A = 23cm, B = 70cm, C = 2m). A spot with no dvNode at all (a dstarusers.org
-		// reflector-module report) has no repeater to look up; keep whatever band is already set
-		// (e.g. from the reporting node's band text, see emitEvent below), or "unknown" if it
-		// didn't have one either.
+		// convention (A = 23cm, B = 70cm, C = 2m), unless the feed already supplied a band (a
+		// dstarusers.org repeater row names it, e.g. "440 MHz"), which beats a guess. A spot with
+		// no dvNode at all (a dstarusers.org reflector-module report) has no repeater to look up;
+		// keep whatever band is already set, or "unknown" if it didn't have one either.
 		if (spot.frequency === undefined) {
 			if (spot.dvNode) {
 				let nodeInfo = getNodeDirectory().lookup(spot.dvNode);
 				if (nodeInfo) {
 					spot.frequency = nodeInfo.frequency;
 					spot.frequencySource = 'nodelist';
-				} else {
+				} else if (!spot.band) {
 					let module = spot.dvNode.split('-')[1];
 					let guessedBand = {A: '23cm', B: '70cm', C: '2m'}[module];
 					if (guessedBand) {
