@@ -28,8 +28,8 @@ This:
 2. Starts `mongo:7` on `127.0.0.1:27117` and `redis:7` on `127.0.0.1:6479` (non-default ports,
    so they don't clash with a MongoDB/Redis you already have running locally).
 3. Waits for both to accept connections, then runs `tools/seedLocalUser.js` to create user
-   `HB9DQM` (password `testpass123`) with two triggers (telnet and app actions): one for
-   HB9DQM's own D-STAR callsign, one for anyone on reflector REF030. Start with
+   `N0CALL` (password `testpass123`) with two triggers (telnet and app actions): one for
+   N0CALL's own D-STAR callsign, one for anyone on reflector REF030. Start with
    `DSTAR_CATCHALL=1 npm run local-dev` to also seed a catch-all trigger that matches every
    D-STAR spot from every feed (condition `mode: dstar` only, which the web trigger editor
    deliberately doesn't allow); delete it on the website to go back to specific triggers. The
@@ -49,18 +49,18 @@ automatically (the `hamalert-dev` network is left in place so the next run is fa
 
 ## Using it
 
-- Telnet: `nc 127.0.0.1 7300`, login `HB9DQM` / `testpass123`.
+- Telnet: `nc 127.0.0.1 7300`, login `N0CALL` / `testpass123`.
 - Simulate a spot (the banner prints the exact command with the real `user_id`):
   ```sh
   curl -X POST http://127.0.0.1:1983/sendSpot -H 'Content-Type: application/json' -d '{
-    "user_id": "<user_id>", "source": "quadnet", "fullCallsign": "HB9DQM", "mode": "dstar",
-    "dvEvent": "active", "dvNode": "HB9DQM-B", "dvReflector": "REF030-C"
+    "user_id": "<user_id>", "source": "quadnet", "fullCallsign": "N0CALL", "mode": "dstar",
+    "dvEvent": "active", "dvNode": "N0CALL-B", "dvReflector": "REF030-C"
   }'
   ```
   Simulated spots only match the triggers of the given user. The telnet session shows a line
-  like `DX de :               DV  HB9DQM       DV HB9DQM-B REF030-C           1227Z`.
+  like `DX de :               DV  N0CALL       DV N0CALL-B REF030-C           1227Z`.
   Frequency/band are resolved by `dstar.js`'s `DstarReceiver.enrichSpot()` from the QuadNet/ircDDB
-  repeater lists by repeater module (here `HB9DQM-B`); if a node isn't listed there, the band is guessed from the module letter
+  repeater lists by repeater module (here `N0CALL-B`); if a node isn't listed there, the band is guessed from the module letter
   (A = 23cm, B = 70cm, C = 2m, flagged `bandIsGuessed`), otherwise `band` is `"unknown"`.
 - Live D-STAR spots from the real QuadNet/ircDDB feeds appear in the server log as
   `Spot: ... (dstar), from <gateway> via quadnet` (or `via ircddb`) once someone transmits

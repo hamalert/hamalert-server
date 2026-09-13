@@ -29,10 +29,10 @@ const DstarReceiver = require('./dstar');
 	{
 		"user_id": "586ff45b10a3c6d9c2bb11cf",
 		"source": "quadnet",
-		"fullCallsign": "HB9DQM",
+		"fullCallsign": "N0CALL",
 		"mode": "dstar",
 		"dvEvent": "active",
-		"dvNode": "HB9DQM-B",
+		"dvNode": "N0CALL-B",
 		"dvReflector": "REF030-C"
 	}
 */

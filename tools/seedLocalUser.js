@@ -1,7 +1,7 @@
 /*
 	Seed a local MongoDB with a test user and two D-STAR triggers (three with DSTAR_CATCHALL=1) (see LOCAL_DEV.md).
 
-	Usage: MONGO_URL=mongodb://127.0.0.1:27017/hamalert USERNAME=HB9DQM PASSWORD=testpass123 node tools/seedLocalUser.js
+	Usage: MONGO_URL=mongodb://127.0.0.1:27017/hamalert USERNAME=N0CALL PASSWORD=testpass123 node tools/seedLocalUser.js
 
 	With DSTAR_CATCHALL=1 a third trigger is added that matches EVERY D-STAR spot (condition:
 	mode = dstar, nothing else), which the web trigger editor deliberately doesn't allow; it is
@@ -17,7 +17,7 @@ const bcrypt = require('bcryptjs');
 
 const mongoUrl = process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/hamalert';
 const dbName = process.env.DB_NAME || 'hamalert';
-const username = (process.env.USERNAME || 'HB9DQM').toUpperCase();
+const username = (process.env.USERNAME || 'N0CALL').toUpperCase();
 const password = process.env.PASSWORD || 'testpass123';
 const catchAll = process.env.DSTAR_CATCHALL === '1';
 

@@ -236,18 +236,18 @@ function buildAndRunWebApp(dryRun) {
 }
 
 function printBanner({userId, webStarted, dryRun}) {
-	let curl = `curl -X POST http://127.0.0.1:1983/sendSpot -H 'Content-Type: application/json' -d '{"user_id":"${userId}","source":"quadnet","fullCallsign":"HB9DQM","mode":"dstar","dvEvent":"active","dvNode":"HB9DQM-B","dvReflector":"REF030-C"}'`;
+	let curl = `curl -X POST http://127.0.0.1:1983/sendSpot -H 'Content-Type: application/json' -d '{"user_id":"${userId}","source":"quadnet","fullCallsign":"N0CALL","mode":"dstar","dvEvent":"active","dvNode":"N0CALL-B","dvReflector":"REF030-C"}'`;
 
 	console.log('');
 	console.log('============================================================');
 	console.log(' HamAlert local dev environment' + (dryRun ? ' (dry run)' : ' is up'));
 	console.log('============================================================');
 	if (webStarted) {
-		console.log(` Web app:   http://localhost:${WEB_HOST_PORT}  (login: HB9DQM / testpass123)`);
+		console.log(` Web app:   http://localhost:${WEB_HOST_PORT}  (login: N0CALL / testpass123)`);
 	} else {
 		console.log(' Web app:   not started (see notice above; use --no-web to silence it)');
 	}
-	console.log(` Telnet:    nc 127.0.0.1 7300  (login: HB9DQM / testpass123)`);
+	console.log(` Telnet:    nc 127.0.0.1 7300  (login: N0CALL / testpass123)`);
 	console.log(' Rate limiting is disabled in local-dev (config-local.js rateLimit.disabled)');
 	console.log('');
 	console.log(' Simulate a D-STAR spot for the seeded user:');
