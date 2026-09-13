@@ -9,7 +9,7 @@ It is a Node.js application which spawns separate matcher processes (via IPC) to
 `npm run local-dev` starts a complete local stack in Docker (or Podman with the `podman-docker`
 shim): MongoDB, Redis, the web app (if a `hamalert-web` checkout sits next to this repo) and
 the server itself, using the credential-free `config-local.js`. It seeds a test user
-(`HB9DQM` / `testpass123`) with two D-STAR triggers and prints how to connect over telnet, how
+(`HB9DQM` / `testpass123`) with three D-STAR triggers (including a catch-all for every D-STAR spot) and prints how to connect over telnet, how
 to simulate a spot, and where the web app is. Ctrl-C tears everything down.
 
 ```sh

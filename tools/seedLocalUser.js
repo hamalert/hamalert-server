@@ -1,7 +1,12 @@
 /*
-	Seed a local MongoDB with a test user and two D-STAR triggers (see LOCAL_DEV.md).
+	Seed a local MongoDB with a test user and three D-STAR triggers (see LOCAL_DEV.md).
 
 	Usage: MONGO_URL=mongodb://127.0.0.1:27017/hamalert USERNAME=HB9DQM PASSWORD=testpass123 node tools/seedLocalUser.js
+
+	The third trigger matches EVERY D-STAR spot (condition: mode = dstar, nothing else), which the
+	web trigger editor deliberately doesn't allow; it is injected here so that local testing shows
+	all D-STAR activity in the Alerts page, the app and telnet. Set DSTAR_CATCHALL=0 to skip it,
+	or delete it on the website to test specific triggers in isolation.
 
 	Re-runnable: the user and the triggers created by this script are replaced on each run.
 	Uses the server's own mongodb and bcryptjs modules, so the password hash is compatible with
@@ -14,6 +19,7 @@ const mongoUrl = process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/hamalert';
 const dbName = process.env.DB_NAME || 'hamalert';
 const username = (process.env.USERNAME || 'HB9DQM').toUpperCase();
 const password = process.env.PASSWORD || 'testpass123';
+const catchAll = process.env.DSTAR_CATCHALL !== '0';
 
 async function main() {
 	const client = new MongoClient(mongoUrl);
@@ -21,7 +27,7 @@ async function main() {
 	const db = client.db(dbName);
 
 	await db.collection('users').deleteMany({username});
-	await db.collection('triggers').deleteMany({comment: {$in: ['local test: my callsign on D-STAR', 'local test: anyone on REF030']}});
+	await db.collection('triggers').deleteMany({comment: {$in: ['local test: my callsign on D-STAR', 'local test: anyone on REF030', 'local test: every D-STAR spot']}});
 
 	const userResult = await db.collection('users').insertOne({
 		username,
@@ -52,8 +58,17 @@ async function main() {
 		comment: 'local test: anyone on REF030'
 	});
 
+	if (catchAll) {
+		await db.collection('triggers').insertOne({
+			user_id: userId,
+			conditions: {mode: 'dstar'},	// every D-STAR spot from every feed; not creatable in the web editor
+			actions: ['telnet', 'app'],
+			comment: 'local test: every D-STAR spot'
+		});
+	}
+
 	console.log(`User ${username} (password "${password}") created with _id ${userId}`);
-	console.log(`Two triggers (telnet + app actions) created. Simulate a spot with:`);
+	console.log(`${catchAll ? 'Three' : 'Two'} triggers (telnet + app actions) created${catchAll ? ', including one that matches every D-STAR spot (DSTAR_CATCHALL=0 to skip)' : ''}. Simulate a spot with:`);
 	console.log(`curl -X POST http://127.0.0.1:1983/sendSpot -H 'Content-Type: application/json' -d '{"user_id":"${userId}","source":"quadnet","fullCallsign":"${username}","mode":"dstar","dvEvent":"active","dvNode":"${username}-B","dvReflector":"REF030-C"}'`);
 	await client.close();
 
