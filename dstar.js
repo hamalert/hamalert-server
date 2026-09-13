@@ -3,6 +3,7 @@ const EventEmitter = require('events');
 const axios = require('axios');
 const http = require('http');
 const TTLCache = require('@isaacs/ttlcache');
+const DstarNodeDirectory = require('./dstar_nodes');
 
 /*
 	D-STAR presence receiver
@@ -47,8 +48,9 @@ const TTLCache = require('@isaacs/ttlcache');
 	Info/echo/unlink and other control commands never produce events.
 
 	Heard records carry the repeater/hotspot module (dvNode, e.g. "W4HFH-C") but no frequency.
-	Frequency/band are not resolved here: server.js's normalizeSpot() looks dvNode up in the
-	QuadNet/ircDDB node directory (dstar_nodes.js) so that simulated spots benefit from the same
+	DstarReceiver.enrichSpot() (below) fills in spotter/frequency/band, looking dvNode up in the
+	QuadNet/ircDDB node directory (dstar_nodes.js); the receiver's own spot builder calls it for
+	every live spot, and simulator.js calls it directly for simulated spots so they get the same
 	logic as live ones.
 */
 
@@ -146,6 +148,17 @@ function formatNode(field) {
 	return callsign;
 }
 
+// Lazily-created singleton D-STAR node/reflector frequency directory (dstar_nodes.js), shared by
+// enrichSpot() below regardless of how many DstarReceiver instances exist. Created eagerly by the
+// constructor so it starts refreshing at server start.
+let nodeDirectory = null;
+function getNodeDirectory() {
+	if (!nodeDirectory) {
+		nodeDirectory = new DstarNodeDirectory();
+	}
+	return nodeDirectory;
+}
+
 class DstarReceiver extends EventEmitter {
 	constructor(options) {
 		super();
@@ -160,6 +173,54 @@ class DstarReceiver extends EventEmitter {
 		// tool; resolves a repeater/hotspot module to the reflector module it is currently
 		// linked to, so a heard record with no reflector of its own can still be alerted on one.
 		this.linkDirectory = this.options.linkDirectory || null;
+		// Start the node/reflector frequency directory refreshing now, so it has data by the
+		// time the first spot needs enriching.
+		getNodeDirectory();
+	}
+
+	// Enrich a D-STAR spot with spotter, and frequency-or-band - the D-STAR-specific spot
+	// massaging that used to live in server.js's normalizeSpot(). Idempotent, so it's safe to
+	// call regardless of what the caller already filled in (the receiver's own spot builder
+	// calls this after setting a gateway spotter; simulator.js calls it directly for simulated
+	// spots, which bypass the receiver entirely).
+	static enrichSpot(spot) {
+		// Make sure every spot has a spotter, even without a gateway (rpt2) callsign. A
+		// reflector-only spot (no dvNode, e.g. a dstarusers.org reflector-module report) falls
+		// back to the reflector callsign instead.
+		if (!spot.spotter) {
+			if (spot.dvNode) {
+				spot.spotter = spot.dvNode.split('-')[0];
+			} else if (spot.dvReflector) {
+				spot.spotter = spot.dvReflector.split('-')[0];
+			}
+		}
+
+		// No frequency comes with the spot itself; resolve it from the QuadNet/ircDDB node
+		// directory by repeater module, or fall back to guessing the band from the module letter
+		// convention (A = 23cm, B = 70cm, C = 2m). A spot with no dvNode at all (a dstarusers.org
+		// reflector-module report) has no repeater to look up; keep whatever band is already set
+		// (e.g. from the reporting node's band text, see emitEvent below), or "unknown" if it
+		// didn't have one either.
+		if (spot.frequency === undefined) {
+			if (spot.dvNode) {
+				let nodeInfo = getNodeDirectory().lookup(spot.dvNode);
+				if (nodeInfo) {
+					spot.frequency = nodeInfo.frequency;
+					spot.frequencySource = 'nodelist';
+				} else {
+					let module = spot.dvNode.split('-')[1];
+					let guessedBand = {A: '23cm', B: '70cm', C: '2m'}[module];
+					if (guessedBand) {
+						spot.band = guessedBand;
+						spot.bandIsGuessed = true;
+					} else {
+						spot.band = 'unknown';
+					}
+				}
+			} else if (!spot.band) {
+				spot.band = 'unknown';
+			}
+		}
 	}
 
 	start() {
@@ -503,11 +564,14 @@ class DstarReceiver extends EventEmitter {
 			spot.comment = record.msg;
 		}
 
-		// dstarusers.org's reporting-node band text (see parseDstarusersNode); server.js's
-		// normalizeSpot() only uses this when dvNode can't be resolved to a physical frequency
+		// dstarusers.org's reporting-node band text (see parseDstarusersNode); enrichSpot() below
+		// only uses this when dvNode can't be resolved to a physical frequency
 		if (record.band) {
 			spot.band = record.band;
 		}
+
+		// Fill in spotter (if the gateway above didn't already) and frequency-or-band.
+		DstarReceiver.enrichSpot(spot);
 
 		if (record.duration !== undefined) {
 			spot.dvDuration = record.duration;

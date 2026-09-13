@@ -59,8 +59,8 @@ automatically (the `hamalert-dev` network is left in place so the next run is fa
   ```
   Simulated spots only match the triggers of the given user. The telnet session shows a line
   like `DX de :               DV  HB9DQM       DV HB9DQM-B REF030-C           1227Z`.
-  Frequency/band are resolved from the QuadNet/ircDDB repeater lists by repeater module (here
-  `HB9DQM-B`); if a node isn't listed there, the band is guessed from the module letter
+  Frequency/band are resolved by `dstar.js`'s `DstarReceiver.enrichSpot()` from the QuadNet/ircDDB
+  repeater lists by repeater module (here `HB9DQM-B`); if a node isn't listed there, the band is guessed from the module letter
   (A = 23cm, B = 70cm, C = 2m, flagged `bandIsGuessed`), otherwise `band` is `"unknown"`.
 - Live D-STAR spots from the real QuadNet/ircDDB feeds appear in the server log as
   `Spot: ... (dstar), from <gateway> via quadnet` (or `via ircddb`) once someone transmits

@@ -6,7 +6,6 @@ const PskReporterReceiver = require('./pskreporter');
 const ClusterReceiver = require('./cluster');
 const SimulatorReceiver = require('./simulator');
 const DstarReceiver = require('./dstar');
-const DstarNodeDirectory = require('./dstar_nodes');
 const ReflectorLinkDirectory = require('./dstar_links');
 //const EmailNotifier = require('./notify/email');
 const ThreemaNotifier = require('./notify/threema');
@@ -45,7 +44,6 @@ var limitLogger;
 var matchLogger;
 var statsUpdater = new StatsUpdater();
 var modeGuesser = new ModeGuesser();
-var dstarNodeDirectory = new DstarNodeDirectory();
 var db;
 var clubLogResolver;
 
@@ -413,18 +411,6 @@ function normalizeSpot(spot, callback) {
 		spot.prefix = prefix;
 	}
 
-	// D-STAR: make sure every spot has a spotter, even without a gateway (rpt2) callsign,
-	// before we compute the spotter prefix below. A reflector-only spot (no dvNode, e.g. a
-	// dstarusers.org reflector-module report) falls back to the reflector callsign instead.
-	// Checked via mode (not source), since source now names the feed (quadnet/ircddb/dstarusers).
-	if (spot.mode === 'dstar' && !spot.spotter) {
-		if (spot.dvNode) {
-			spot.spotter = spot.dvNode.split('-')[0];
-		} else if (spot.dvReflector) {
-			spot.spotter = spot.dvReflector.split('-')[0];
-		}
-	}
-
 	// determine spotter prefix
 	if (spot.spotter) {
 		let spotterPrefix = calcPrefix(spot.spotter);
@@ -433,34 +419,7 @@ function normalizeSpot(spot, callback) {
 		}
 	}
 
-	// D-STAR: no frequency comes with the spot (see dstar.js); resolve it from the QuadNet/
-	// ircDDB node directory by repeater module, or fall back to guessing the band from the
-	// module letter convention (A = 23cm, B = 70cm, C = 2m). A spot with no dvNode at all
-	// (a dstarusers.org reflector-module report) has no repeater to look up; keep the band
-	// the feed already derived from the reporting node's band text (see dstar.js), or
-	// "unknown" if it didn't have one either.
-	if (spot.mode === 'dstar' && spot.frequency === undefined) {
-		if (spot.dvNode) {
-			let nodeInfo = dstarNodeDirectory.lookup(spot.dvNode);
-			if (nodeInfo) {
-				spot.frequency = nodeInfo.frequency;
-				spot.frequencySource = 'nodelist';
-			} else {
-				let module = spot.dvNode.split('-')[1];
-				let guessedBand = {A: '23cm', B: '70cm', C: '2m'}[module];
-				if (guessedBand) {
-					spot.band = guessedBand;
-					spot.bandIsGuessed = true;
-				} else {
-					spot.band = 'unknown';
-				}
-			}
-		} else if (!spot.band) {
-			spot.band = 'unknown';
-		}
-	}
-
-	// determine band (skip if already set above, e.g. a guessed D-STAR band)
+	// determine band (a source may pre-populate band, e.g. when it has no frequency)
 	if (spot.band === undefined && spot.frequency !== undefined) {
 		let band = config.bands.find((element) => {
 			return (element.from <= spot.frequency && element.to >= spot.frequency)

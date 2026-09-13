@@ -4,6 +4,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const util = require('util');
 const hamutil = require('./hamutil');
+const DstarReceiver = require('./dstar');
 
 /*
 	Receive simulated spots from web interface on localhost port.
@@ -21,8 +22,9 @@ const hamutil = require('./hamutil');
 
 	D-STAR presence spots carry dvEvent ("active" or "linked"), dvNode (e.g. "W4HFH-C") and
 	optionally dvReflector (e.g. "REF030-C") instead of a frequency; frequency is optional and,
-	if omitted, is resolved by server.js from the D-STAR node directory. Source names the feed
-	that would have reported it (quadnet/ircddb/dstarusers); mode is always "dstar":
+	if omitted, is resolved by DstarReceiver.enrichSpot() (dstar.js) from the D-STAR node
+	directory. Source names the feed that would have reported it (quadnet/ircddb/dstarusers);
+	mode is always "dstar":
 
 	{
 		"user_id": "586ff45b10a3c6d9c2bb11cf",
@@ -76,9 +78,11 @@ class SimulatorReceiver extends EventEmitter {
 				spot.dvReflector = String(req.body.dvReflector).toUpperCase();
 			}
 			if (req.body.frequency !== undefined) {
-				// Optional: if omitted, server.js resolves it from the D-STAR node directory
+				// Optional: if omitted, DstarReceiver.enrichSpot() resolves it below
 				spot.frequency = req.body.frequency;
 			}
+			// Simulated spots bypass the D-STAR receiver, so apply its spotter/frequency/band enrichment here
+			DstarReceiver.enrichSpot(spot);
 			let where = spot.dvNode;
 			if (spot.dvReflector) {
 				where = (spot.dvEvent === 'linked') ? `${spot.dvNode} to ${spot.dvReflector}` : `${spot.dvReflector} via ${spot.dvNode}`;

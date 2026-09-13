@@ -40,11 +40,12 @@ Spots have `mode: 'dstar'` and `source` set to the name of the feed that reporte
 condition matches D-STAR spots from any of the three feeds; use `mode: 'dstar'` (or leave source
 unset) rather than a specific feed name to match D-STAR generally.
 
-`dstar.js` itself carries no frequency; `server.js` resolves frequency/band from the QuadNet
-(`openquad.net`) and ircDDB (`status.ircddb.net`) repeater lists (`dstar_nodes.js`), keyed by
-repeater module. If a node is not listed in either list, the band is guessed from the module
-letter convention (A = 23cm, B = 70cm, C = 2m) and flagged with `bandIsGuessed: true`;
-otherwise (an unknown module letter, or no module at all) `band` is set to `"unknown"`.
+`dstar.js`'s `DstarReceiver.enrichSpot()` resolves spotter and frequency/band before a spot leaves
+the module, from the QuadNet (`openquad.net`) and ircDDB (`status.ircddb.net`) repeater lists
+(`dstar_nodes.js`), keyed by repeater module. If a node is not listed in either list, the band is
+guessed from the module letter convention (A = 23cm, B = 70cm, C = 2m) and flagged with
+`bandIsGuessed: true`; otherwise (an unknown module letter, or no module at all) `band` is set to
+`"unknown"`.
 
 ### dstarusers.org feed
 
