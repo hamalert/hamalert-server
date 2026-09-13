@@ -275,6 +275,7 @@ class ReflectorLinkDirectory {
 			// Exposed so callers (tools/dstarTest.js, tests) can wait for the first refresh to finish.
 			this.initialRefresh = this.refresh();
 			this.timer = setInterval(() => this.refresh(), this.options.refreshInterval || 120000);
+			this.timer.unref();	// don't keep a short-lived tool alive just for this
 		} else {
 			this.initialRefresh = Promise.resolve();
 		}

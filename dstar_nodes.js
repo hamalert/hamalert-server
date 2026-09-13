@@ -66,7 +66,8 @@ class DstarNodeDirectory {
 		}
 
 		this.refresh();
-		setInterval(() => this.refresh(), this.options.refreshInterval);
+		// unref: don't keep a short-lived tool (tools/dstarTest.js replays) alive just for this
+		setInterval(() => this.refresh(), this.options.refreshInterval).unref();
 	}
 
 	// Look up a normalized node/reflector identifier (e.g. "W4HFH-C"). Returns
