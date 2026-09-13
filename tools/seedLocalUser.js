@@ -1,12 +1,12 @@
 /*
-	Seed a local MongoDB with a test user and three D-STAR triggers (see LOCAL_DEV.md).
+	Seed a local MongoDB with a test user and two D-STAR triggers (three with DSTAR_CATCHALL=1) (see LOCAL_DEV.md).
 
 	Usage: MONGO_URL=mongodb://127.0.0.1:27017/hamalert USERNAME=HB9DQM PASSWORD=testpass123 node tools/seedLocalUser.js
 
-	The third trigger matches EVERY D-STAR spot (condition: mode = dstar, nothing else), which the
-	web trigger editor deliberately doesn't allow; it is injected here so that local testing shows
-	all D-STAR activity in the Alerts page, the app and telnet. Set DSTAR_CATCHALL=0 to skip it,
-	or delete it on the website to test specific triggers in isolation.
+	With DSTAR_CATCHALL=1 a third trigger is added that matches EVERY D-STAR spot (condition:
+	mode = dstar, nothing else), which the web trigger editor deliberately doesn't allow; it is
+	injected here so that local testing can show all D-STAR activity in the Alerts page, the app
+	and telnet. Off by default; delete it on the website to go back to specific triggers.
 
 	Re-runnable: the user and the triggers created by this script are replaced on each run.
 	Uses the server's own mongodb and bcryptjs modules, so the password hash is compatible with
@@ -19,7 +19,7 @@ const mongoUrl = process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/hamalert';
 const dbName = process.env.DB_NAME || 'hamalert';
 const username = (process.env.USERNAME || 'HB9DQM').toUpperCase();
 const password = process.env.PASSWORD || 'testpass123';
-const catchAll = process.env.DSTAR_CATCHALL !== '0';
+const catchAll = process.env.DSTAR_CATCHALL === '1';
 
 async function main() {
 	const client = new MongoClient(mongoUrl);
@@ -68,7 +68,7 @@ async function main() {
 	}
 
 	console.log(`User ${username} (password "${password}") created with _id ${userId}`);
-	console.log(`${catchAll ? 'Three' : 'Two'} triggers (telnet + app actions) created${catchAll ? ', including one that matches every D-STAR spot (DSTAR_CATCHALL=0 to skip)' : ''}. Simulate a spot with:`);
+	console.log(`${catchAll ? 'Three' : 'Two'} triggers (telnet + app actions) created${catchAll ? ', including one that matches every D-STAR spot (DSTAR_CATCHALL=1)' : ''}. Simulate a spot with:`);
 	console.log(`curl -X POST http://127.0.0.1:1983/sendSpot -H 'Content-Type: application/json' -d '{"user_id":"${userId}","source":"quadnet","fullCallsign":"${username}","mode":"dstar","dvEvent":"active","dvNode":"${username}-B","dvReflector":"REF030-C"}'`);
 	await client.close();
 

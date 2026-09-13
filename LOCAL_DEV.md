@@ -1,7 +1,7 @@
 # Running HamAlert locally
 
 One-command local dev environment for developing and testing spot sources. It runs MongoDB
-and Redis in Docker, seeds a test user and three D-STAR triggers, and starts the server itself
+and Redis in Docker, seeds a test user and two D-STAR triggers, and starts the server itself
 against `config-local.js` — no production credentials needed at all. Push notifications
 (APNS/FCM), Threema, and the RBN/cluster telnet feeds are left out; they need real credentials
 or a real callsign login. If you also have a `hamalert-web` checkout with a `Dockerfile.dev`,
@@ -28,11 +28,12 @@ This:
 2. Starts `mongo:7` on `127.0.0.1:27117` and `redis:7` on `127.0.0.1:6479` (non-default ports,
    so they don't clash with a MongoDB/Redis you already have running locally).
 3. Waits for both to accept connections, then runs `tools/seedLocalUser.js` to create user
-   `HB9DQM` (password `testpass123`) with three triggers (telnet and app actions): one for
-   HB9DQM's own D-STAR callsign, one for anyone on reflector REF030, and a catch-all that
-   matches every D-STAR spot from every feed (condition `mode: dstar` only, which the web
-   trigger editor deliberately doesn't allow; set `DSTAR_CATCHALL=0` when seeding to skip it,
-   or delete it on the website to test specific triggers in isolation). The app action makes the
+   `HB9DQM` (password `testpass123`) with two triggers (telnet and app actions): one for
+   HB9DQM's own D-STAR callsign, one for anyone on reflector REF030. Start with
+   `DSTAR_CATCHALL=1 npm run local-dev` to also seed a catch-all trigger that matches every
+   D-STAR spot from every feed (condition `mode: dstar` only, which the web trigger editor
+   deliberately doesn't allow); delete it on the website to go back to specific triggers. The
+   app action makes the
    matched spots show up in the mobile app's feed (see the hamalert-app README for running the
    app in a desktop browser against this stack).
 4. If `../hamalert-web/Dockerfile.dev` exists (or `HAMALERT_WEB_DIR` points at a checkout with
