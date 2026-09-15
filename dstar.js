@@ -425,6 +425,10 @@ class DstarReceiver extends EventEmitter {
 			return events;	// masked (********), blank or bogus callsign
 		}
 
+		// RPT1 is the D-STAR header field naming the repeater module the station keyed up on
+		// (RPT2 is the gateway). It is mandatory in the protocol, so a record without it is
+		// malformed or masked: there would be no node to report, no place for the dedupe key and
+		// nothing to derive a band from. Live data shows no blank RPT1 at all; this is a guard.
 		let node = formatNode(record.rpt1);
 		if (!node) {
 			return events;
