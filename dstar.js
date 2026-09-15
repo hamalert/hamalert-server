@@ -907,6 +907,7 @@ class DstarusersFeed extends EventEmitter {
 		this.options = options;
 		this.seenKeys = null;	// null until the first poll completes (priming)
 		this.newestTime = null;
+		this.loggedParseFailure = false;
 	}
 
 	start() {
@@ -944,6 +945,22 @@ class DstarusersFeed extends EventEmitter {
 	// same watermark logic.
 	handlePage(html) {
 		let records = DstarReceiver.parseDstarusersPage(html);	// newest first, as on the page
+
+		// A non-trivial page that yields zero rows almost always means dstarusers.org changed
+		// lastheard.php's layout out from under parseDstarusersPage (rows skipped for having the
+		// wrong cell count are already folded into zero records here, see parseDstarusersRow), so
+		// log it - but only once per outage, not every poll - and log recovery once rows parse
+		// again.
+		if (records.length > 0) {
+			if (this.loggedParseFailure) {
+				console.log('D-STAR dstarusers feed: last-heard rows are parsing again');
+				this.loggedParseFailure = false;
+			}
+		} else if (html.length > 1000 && !this.loggedParseFailure) {
+			console.error(`D-STAR dstarusers feed: page fetched (${html.length} bytes) but no last-heard rows parsed; has lastheard.php changed its layout?`);
+			this.loggedParseFailure = true;
+		}
+
 		let priming = (this.seenKeys === null);
 		let cutoff = (!priming && this.newestTime) ? new Date(this.newestTime.getTime() - dstarusersLateRowWindow) : null;
 
