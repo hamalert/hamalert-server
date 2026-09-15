@@ -892,11 +892,14 @@ class IrcddbLiveFeed extends EventEmitter {
 	Rows for the same callsign/node/time can appear more than once across polls (the page
 	simply reprints whatever DStarMonitor last reported), so the watermark is a Set of
 	"time|callsign|node" keys for the rows seen on the *previous* poll only (rebuilt every
-	poll, not accumulated) plus the newest row time seen, used as a small safety-margin cutoff
-	(dstarusersCutoffSlack) so that a gap (e.g. a missed poll) can't cause very old rows still
-	on the page to be treated as new.
+	poll, not accumulated) plus the newest row time seen, used with a small allowance
+	(dstarusersLateRowWindow) for how far behind that newest row a previously-unseen row may
+	still be and get emitted.
 */
-const dstarusersCutoffSlack = 5*60*1000;
+// How far behind the newest row already seen a previously-unseen row may be and still be
+// emitted as new. Older unseen rows are treated as already reported, so a missed poll can't
+// replay old rows still on the page.
+const dstarusersLateRowWindow = 5*60*1000;
 
 class DstarusersFeed extends EventEmitter {
 	constructor(options) {
@@ -942,7 +945,7 @@ class DstarusersFeed extends EventEmitter {
 	handlePage(html) {
 		let records = DstarReceiver.parseDstarusersPage(html);	// newest first, as on the page
 		let priming = (this.seenKeys === null);
-		let cutoff = (!priming && this.newestTime) ? new Date(this.newestTime.getTime() - dstarusersCutoffSlack) : null;
+		let cutoff = (!priming && this.newestTime) ? new Date(this.newestTime.getTime() - dstarusersLateRowWindow) : null;
 
 		let newSeenKeys = new Set();
 		let newestTime = this.newestTime;
