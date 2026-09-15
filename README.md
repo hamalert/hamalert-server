@@ -94,8 +94,8 @@ re-fetched every `refreshInterval` (default 2 minutes), with bounded concurrency
 (`maxConcurrent`) and a per-reflector `timeout`.
 
 A 2026 survey of the 57 REF reflectors that report to dstarusers.org found three dashboard
-shapes: 50 serve a classic static HTML "Linked Gateways" table (`readers` type `html`, the
-default - one, REF020, sits behind an HTML frameset, which is followed automatically as well as
+shapes: 50 serve a classic static HTML "Linked Gateways" table (the default reader, needing no
+`readerOverrides` entry - one, REF020, sits behind an HTML frameset, which is followed automatically as well as
 via an explicit override), one (REF075) serves an equivalent JSON REST endpoint (`type: 'json'`,
 `gateways: [{callsign, module}]`), and one (REF016) is WebSocket-push only with no HTTP fallback
 at all and is marked `type: 'unsupported'` (watched but never fetched). Five reflectors were

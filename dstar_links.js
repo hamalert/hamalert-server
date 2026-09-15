@@ -20,7 +20,7 @@ const path = require('path');
 	see lookup() below) to fill in a missing dvReflector before a spot is built.
 
 	A survey of all 57 REF reflectors that report to dstarusers.org found three dashboard
-	shapes worth reading (see the "readers" design below), one WebSocket-only reflector with no
+	shapes worth reading (see the readers design below), one WebSocket-only reflector with no
 	usable HTTP interface (REF016, marked "unsupported"), and five reflectors unreachable at
 	survey time - none of those five need a reader, they simply have no data to fetch today.
 
@@ -32,8 +32,8 @@ const path = require('path');
 	- JSON (REF075 only): a small JSON REST endpoint (a "DREFD" reflector daemon) with a
 	  `gateways: [{callsign, module}]` array.
 	- unsupported (REF016 only): WebSocket-push only, no HTTP fallback at all. Configured via
-	  readers.REF016 = {type: 'unsupported'} so it is watched (if a trigger names it) but never
-	  fetched.
+	  readerOverrides.REF016 = {type: 'unsupported'} so it is watched (if a trigger names it) but
+	  never fetched.
 
 	Refresh is on a timer (config.dstar.reflectorLinks.refreshInterval), fetches run with bounded
 	concurrency (maxConcurrent), and a fetch failure for one reflector never affects any other:
@@ -335,10 +335,10 @@ class ReflectorLinkDirectory {
 		return hit ? {reflector: hit.reflector, source: hit.source} : null;
 	}
 
-	// Reader config for one reflector: an override from options.readers, or the default classic
-	// HTML reader against options.urlTemplate with "{ref}" replaced by the lowercased callsign.
+	// Reader config for one reflector: an override from options.readerOverrides, or the default
+	// classic HTML reader against options.urlTemplate with "{ref}" replaced by the lowercased callsign.
 	readerConfigFor(ref) {
-		let override = (this.options.readers && this.options.readers[ref]) || {};
+		let override = (this.options.readerOverrides && this.options.readerOverrides[ref]) || {};
 		let type = override.type || 'html';
 		let url = override.url || (this.options.urlTemplate || 'http://{ref}.dstargateway.org/').replace('{ref}', ref.toLowerCase());
 		return {type, url};

@@ -164,8 +164,10 @@ config.dstar = {
 		// used for manual testing against the real dashboard - always watch both locally so
 		// there's no need to also create a matching trigger just to exercise this.
 		alwaysWatch: ['REF030', 'REF058'],
-		// Per-reflector overrides, straight from the dashboard survey (2026-09):
-		readers: {
+		// Every REF reflector is read with the default classic HTML "Linked Gateways" reader
+		// unless it has an entry here; only reflectors whose dashboard differs from that need
+		// one. Overrides below are straight from the dashboard survey (2026-09):
+		readerOverrides: {
 			// Root "/" is an HTML frameset; the classic Linked Gateways table is one hop deeper,
 			// at /status.html. The generic reader follows the frameset automatically, but the
 			// override is kept as documentation (and as a direct fallback if that ever changes).
