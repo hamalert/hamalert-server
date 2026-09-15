@@ -218,4 +218,7 @@ class DstarNodeDirectory {
 	}
 }
 
+// Exposed for offline testing (test/, tools/dstarNodeTest.js).
+DstarNodeDirectory.parseNodeField = parseNodeField;
+
 module.exports = DstarNodeDirectory;

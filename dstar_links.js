@@ -453,9 +453,11 @@ class ReflectorLinkDirectory {
 	}
 }
 
-// Exposed for offline testing (tools/dstarTest.js --links-file, and scratchpad tests).
+// Exposed for offline testing (tools/dstarTest.js --links-file, test/).
 ReflectorLinkDirectory.parseClassicHtml = parseClassicHtml;
 ReflectorLinkDirectory.parseJsonGateways = parseJsonGateways;
 ReflectorLinkDirectory.findFramesetUrl = findFramesetUrl;
+ReflectorLinkDirectory.refReflectorRegex = refReflectorRegex;
+ReflectorLinkDirectory.linkedCellRegex = linkedCellRegex;
 
 module.exports = ReflectorLinkDirectory;

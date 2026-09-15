@@ -21,6 +21,14 @@ See [LOCAL_DEV.md](LOCAL_DEV.md) for the options (`--keep`, `--no-web`, `--down`
 selection works (`HAMALERT_CONFIG`), and the known gaps (no push notifications, no Club Log,
 no RBN/cluster feeds). The web app can also be built and run on its own; see its README.
 
+## Tests
+
+`npm test` runs the D-STAR regex/parser tests with Node's built-in test runner (`node --test
+test/`) - no test framework or extra dependency required. They need no database or network: each
+`test/*.test.js` file sets `HAMALERT_CONFIG` itself before requiring the module(s) it covers, and
+exercises the parsing/classification functions directly against saved HTML/text fixtures under
+`tools/fixtures/` (including `tools/fixtures/reflectors/`).
+
 ## D-STAR presence source
 
 `dstar.js` is a presence source rather than a spot source: it reports when a callsign becomes

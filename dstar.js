@@ -1002,4 +1002,13 @@ class DstarusersFeed extends EventEmitter {
 	}
 }
 
+// Exposed for offline testing (test/, tools/dstarTest.js).
+DstarReceiver.callsignRegex = callsignRegex;
+DstarReceiver.linkCommandRegex = linkCommandRegex;
+DstarReceiver.dstarusersTimeRegex = dstarusersTimeRegex;
+DstarReceiver.parseDstarusersNode = parseDstarusersNode;
+DstarReceiver.formatNode = formatNode;
+DstarReceiver.cleanCell = cleanCell;
+DstarReceiver.htmlUnescape = htmlUnescape;
+
 module.exports = DstarReceiver;
