@@ -1,6 +1,9 @@
 const sprintf = require('sprintf-js').sprintf;
 
 exports.formatFrequency = function(frequency) {
+	if (frequency === undefined || frequency === null) {
+		return undefined;
+	}
 	try {
 		return sprintf("%.06f", frequency).replace(/^(\d+\.\d{3,}?)0+$/, '$1');
 	} catch (e) {
@@ -58,7 +61,12 @@ exports.makeSpotParams = function(spot, comment, actions) {
 		wwffDivision: spot.wwffDivision,
 		wwffName: spot.wwffName,
 		iotaGroupRef: spot.iotaGroupRef,
-		iotaGroupName: spot.iotaGroupName
+		iotaGroupName: spot.iotaGroupName,
+		dvEvent: spot.dvEvent,
+		dvNode: spot.dvNode,
+		dvReflector: spot.dvReflector,
+		dvSuffix: spot.dvSuffix,
+		dvDuration: spot.dvDuration
 	};
 	
 	if (spot.qsl) {

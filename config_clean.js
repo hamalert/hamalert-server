@@ -38,7 +38,8 @@ config.rateLimit = {
 	dumpFile: '/data/hamalert/cache/ratelimit.dump',
 	maxFrequencyDiff: 0.0004,
 	maxFrequencyDiffDigi: 0.003,
-	digiModes: ['psk', 'rtty', 'jt', 'msk', 'ft2', 'ft4', 'ft8', 'js8', 'qra64', 'iscat', 'fsk441', 't10', 'q65', 'sstv', 'varac', 'olivia', 'fst4']
+	digiModes: ['psk', 'rtty', 'jt', 'msk', 'ft2', 'ft4', 'ft8', 'js8', 'qra64', 'iscat', 'fsk441', 't10', 'q65', 'sstv', 'varac', 'olivia', 'fst4'],
+	disabled: false	// never disable rate limiting in production
 };
 
 config.limitLog = {
@@ -206,6 +207,73 @@ config.pskreporter = {
 	spotterFilterRegex: /^(N0CALL|W\/SWL)/i
 };
 
+config.dstar = {
+	// D-STAR presence: QuadNet and ircDDB "last heard" logs (see dstar.js)
+	quadnet: {
+		url: 'https://www.openquad.net/ics/ics',
+		pollInterval: 15000,
+		timeout: 20000,
+		tailBytes: 65536,
+		disabled: false
+	},
+	ircddb: {
+		url: 'http://live.ircddb.net:8080/jj3.yaws',
+		pollInterval: 15000,
+		timeout: 20000,
+		//connectProxy: 'http://127.0.0.1:3128',	// only for development environments that require an HTTP CONNECT proxy
+		disabled: false
+	},
+	dstarusers: {
+		url: 'https://www.dstarusers.org/lastheard.php',
+		pollInterval: 30000,
+		timeout: 20000,
+		disabled: false
+	},
+	// D-STAR node/reflector frequency directory (see dstar_nodes.js); used by server.js to
+	// resolve frequency/band for spots emitted by dstar.js
+	nodeLists: {
+		quadnetUrl: 'https://www.openquad.net/gateway.php',
+		ircddbUrl: 'https://status.ircddb.net/repeater.php',
+		refreshInterval: 3600*1000,
+		dumpFile: '/data/hamalert/cache/dstar-nodes.dump'
+	},
+	// D-STAR reflector link directory (see dstar_links.js): resolves a repeater/hotspot module
+	// (e.g. "GB7ME-B") to the DPlus REF reflector module it is currently linked to (e.g.
+	// "REF030-C") by scraping REF reflector dashboards, so a heard record naming only the
+	// repeater still alerts on a reflector trigger. Watched reflectors come from the triggers
+	// collection's dvReflector conditions (see server.js's getWatchedReflectors), plus alwaysWatch.
+	reflectorLinks: {
+		disabled: false,
+		urlTemplate: 'http://{ref}.dstargateway.org/',
+		refreshInterval: 120000,
+		timeout: 10000,
+		failureBackoff: 600000,
+		maxConcurrent: 3,
+		alwaysWatch: [],
+		// Every REF reflector is read with the default classic HTML "Linked Gateways" reader
+		// unless it has an entry here; only reflectors whose dashboard differs from that need
+		// one. Overrides below are straight from the dashboard survey (2026-09):
+		readerOverrides: {
+			// Root "/" is an HTML frameset; the classic Linked Gateways table is one hop deeper,
+			// at /status.html. The generic reader follows the frameset automatically, but the
+			// override is kept as documentation (and as a direct fallback if that ever changes).
+			REF020: {url: 'http://ref020.dstargateway.org/status.html'},
+			// A "DREFD" JSON dashboard instead of a classic HTML table: gateways: [{callsign, module}]
+			REF075: {type: 'json', url: 'https://ref075.dstargateway.org/api.php'},
+			// WebSocket-push only (wss://.../ws); no HTTP fallback at all, so there is nothing to scrape
+			REF016: {type: 'unsupported'}
+		},
+		dumpFile: '/data/hamalert/cache/dstar-links.dump'
+	},
+	dedupeInterval: 15*60*1000,		// one alert per callsign, event and place (reflector without module, else node) within this window
+	maxAge: 10*60*1000,				// ignore records older than this
+	headerMergeInterval: 10*60*1000,	// how long to remember ircDDB header records (TX message) for their stats record
+	minVoiceDuration: 2,				// seconds; shorter transmissions are not considered voice
+	minVoiceDurationLinkCommand: 5,	// seconds; a link command held this long is also treated as voice
+	ignoreDirectedCalls: true,		// do not alert on callsign-routed (directed) calls
+	disabled: false
+};
+
 config.simulator = {
 	port: 1983,
 	address: '127.0.0.1'
@@ -313,7 +381,10 @@ config.matcher = {
 		'bandslot',
 		'state',
 		'spotterState',
-		'qsl'
+		'qsl',
+		'dvEvent',
+		'dvNode',
+		'dvReflector'
 	],
 	// Commonly used conditions for hash table optimization (cannot contain 'not' conditions!)
 	commonConditions: [
@@ -344,7 +415,10 @@ config.matcher = {
 		'bandslot',
 		'state',
 		'spotterState',
-		'qsl'
+		'qsl',
+		'dvEvent',
+		'dvNode',
+		'dvReflector'
 	]
 };
 

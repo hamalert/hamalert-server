@@ -1,6 +1,6 @@
 const axios = require('axios')
 const dxccLookup = require('./dxcc-lookup')
-const config = require('./config')
+const config = require('./config_loader')
 
 class TopDxccFilter {
 	constructor(topDxccsToIgnore) {

@@ -1,7 +1,7 @@
 const MongoClient = require('mongodb').MongoClient;
 const nodemailer = require('nodemailer');
 const assert = require('assert');
-const config = require('../config');
+const config = require('../config_loader');
 const async = require('async');
 
 let client = MongoClient.connect(config.mongodb.url, async function (err, db) {

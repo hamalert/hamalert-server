@@ -1,4 +1,4 @@
-const config = require('../config');
+const config = require('../config_loader');
 const net = require('net');
 const Notifier = require('./notifier');
 const TelnetConnection = require('./telnetconn');
@@ -48,7 +48,9 @@ class TelnetNotifier extends Notifier {
 		connections.forEach(connection => {
 			try {
 				connection.notify(spot, comment);
-			} catch (e) {}
+			} catch (e) {
+				console.error(`Telnet notify failed for ${user.username}: ${e}`);
+			}
 		});
 	}
 }

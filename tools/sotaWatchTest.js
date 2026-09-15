@@ -1,6 +1,6 @@
 const SotaSpotReceiver = require('../sotaspots');
 const MongoClient = require('mongodb').MongoClient;
-const config = require('../config');
+const config = require('../config_loader');
 const assert = require('assert');
 
 //config.sotaWatch.spotsUrl = 'http://api2.sota.org.uk/api/spots/500/all';
