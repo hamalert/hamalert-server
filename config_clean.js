@@ -177,9 +177,7 @@ config.cluster = [
 		timeout: 300000,
 		titlePrefix: "Cluster spot",
 		filterRegex: /\b(nil)\b/i,
-		spotterFilterRegex: /^W3LPL$/i,
-		solardataTargetUrlBase: 'https://sotl.as/api/solardata',
-		solardataApiKey: '<redacted>'
+		spotterFilterRegex: /^W3LPL$/i
 	},
 	{
 		source: 'wwff',

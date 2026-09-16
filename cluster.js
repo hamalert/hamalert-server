@@ -107,31 +107,6 @@ class ClusterReceiver extends EventEmitter {
 			}
 			
 			this.emit("spot", spot);
-		} else if (/^WCY de DK0WCY.*? : (.+)$/.test(line)) {
-			// Solar data: parse fields
-			let matches = /^WCY de DK0WCY.*? : (.+)$/.exec(line);
-			let fieldStrs = matches[1].split(' ')
-			let fields = {}
-			for (let fieldStr of fieldStrs) {
-				let [k, v] = fieldStr.split('=')
-				fields[k] = v
-			}
-
-			if (this.config.solardataTargetUrlBase) {
-				let now = new Date()
-				let url = this.config.solardataTargetUrlBase + '/' + moment().utc().format('YYYY-MM-DD/H')
-				axios.post(url, {
-					apiKey: this.config.solardataApiKey,
-					sfi: parseInt(fields.SFI),
-					a: parseInt(fields.A),
-					k: parseInt(fields.K),
-					expK: parseInt(fields.expK),
-					r: parseInt(fields.R),
-					sa: fields.SA,
-					gmf: fields.GMF,
-					aurora: (fields.Au == 'yes')
-				})
-			}
 		} else {
 			console.log("No match: " + line);
 		}
