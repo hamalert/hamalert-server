@@ -1,5 +1,5 @@
 /*
-	Seed a local MongoDB with a test user and two D-STAR triggers (three with DSTAR_CATCHALL=1) (see LOCAL_DEV.md).
+	Seed a local MongoDB with a test user and three D-STAR triggers (four with DSTAR_CATCHALL=1) (see LOCAL_DEV.md).
 
 	Usage: MONGO_URL=mongodb://127.0.0.1:27017/hamalert USERNAME=N0CALL PASSWORD=testpass123 node tools/seedLocalUser.js
 
@@ -27,7 +27,7 @@ async function main() {
 	const db = client.db(dbName);
 
 	await db.collection('users').deleteMany({username});
-	await db.collection('triggers').deleteMany({comment: {$in: ['local test: my callsign on D-STAR', 'local test: anyone on REF030', 'local test: every D-STAR spot']}});
+	await db.collection('triggers').deleteMany({comment: {$in: ['local test: my callsign on D-STAR', 'local test: anyone on REF030', 'local test: anyone on QuadNet Array (DSTAR1)', 'local test: every D-STAR spot']}});
 
 	const userResult = await db.collection('users').insertOne({
 		username,
@@ -58,6 +58,13 @@ async function main() {
 		comment: 'local test: anyone on REF030'
 	});
 
+	await db.collection('triggers').insertOne({
+		user_id: userId,
+		conditions: {dvGroup: 'DSTAR1', dvEvent: 'active'},
+		actions: ['telnet', 'app'],
+		comment: 'local test: anyone on QuadNet Array (DSTAR1)'
+	});
+
 	if (catchAll) {
 		await db.collection('triggers').insertOne({
 			user_id: userId,
@@ -68,7 +75,7 @@ async function main() {
 	}
 
 	console.log(`User ${username} (password "${password}") created with _id ${userId}`);
-	console.log(`${catchAll ? 'Three' : 'Two'} triggers (telnet + app actions) created${catchAll ? ', including one that matches every D-STAR spot (DSTAR_CATCHALL=1)' : ''}. Simulate a spot with:`);
+	console.log(`${catchAll ? 'Four' : 'Three'} triggers (telnet + app actions) created${catchAll ? ', including one that matches every D-STAR spot (DSTAR_CATCHALL=1)' : ''}. Simulate a spot with:`);
 	console.log(`curl -X POST http://127.0.0.1:1983/sendSpot -H 'Content-Type: application/json' -d '{"user_id":"${userId}","source":"quadnet","fullCallsign":"${username}","mode":"dstar","dvEvent":"active","dvNode":"${username}-B","dvReflector":"REF030-C"}'`);
 	await client.close();
 
