@@ -5,6 +5,7 @@ const http = require('http');
 const TTLCache = require('@isaacs/ttlcache');
 const DstarNodeDirectory = require('./dstar_nodes');
 const ReflectorLinkDirectory = require('./dstar_links');
+const DstarGroupDirectory = require('./dstar_groups');
 
 /*
 	D-STAR presence receiver
@@ -42,11 +43,12 @@ const ReflectorLinkDirectory = require('./dstar_links');
 
 	Both are normalized into "heard" records, classified into events and deduplicated:
 
-	- active: a voice transmission (UR = CQCQCQ, area routing, or a link command that was
-	  held long enough to be voice)
+	- active: a voice transmission (UR = CQCQCQ, area routing, a QuadNet "Smart Group" subscribe
+	  code (see dstar_groups.js), or a link command that was held long enough to be voice)
 	- linked: a link command (UR = <reflector><module>L)
 
-	Info/echo/unlink and other control commands never produce events.
+	Info/echo/unlink and Smart Group unsubscribe commands, and other control commands, never
+	produce events.
 
 	Heard records carry the repeater/hotspot module (dvNode, e.g. "W4HFH-C") but no frequency.
 	DstarReceiver.enrichSpot() (below) fills in spotter/frequency/band, looking dvNode up in the
@@ -160,6 +162,16 @@ function getNodeDirectory() {
 	return nodeDirectory;
 }
 
+// Lazily-created singleton QuadNet Smart Group directory (dstar_groups.js), shared by classify()
+// below regardless of how many DstarReceiver instances exist, like getNodeDirectory() above.
+let groupDirectory = null;
+function getGroupDirectory() {
+	if (!groupDirectory) {
+		groupDirectory = new DstarGroupDirectory();
+	}
+	return groupDirectory;
+}
+
 class DstarReceiver extends EventEmitter {
 	// options.db: the MongoDB handle (see server.js), used only to build our own
 	// ReflectorLinkDirectory (below); never merged into this.options, so it can't leak into
@@ -196,6 +208,12 @@ class DstarReceiver extends EventEmitter {
 		// Start the node/reflector frequency directory refreshing now, so it has data by the
 		// time the first spot needs enriching.
 		getNodeDirectory();
+
+		// QuadNet Smart Group directory (dstar_groups.js): resolves a UR value naming a routing
+		// group (e.g. "DSTAR1") so classify() can alert on group activity instead of dropping it
+		// as unroutable. Lazily-created singleton like the node directory above; disabled via
+		// config.dstar.smartGroups.disabled (then classify() simply has none to consult).
+		this.groupDirectory = (this.options.smartGroups && this.options.smartGroups.disabled) ? null : getGroupDirectory();
 	}
 
 	// Enrich a D-STAR spot with spotter, and frequency-or-band - the D-STAR-specific spot
@@ -241,6 +259,17 @@ class DstarReceiver extends EventEmitter {
 				spot.band = 'unknown';
 			}
 		}
+	}
+
+	// Resolve a Smart Group callsign (e.g. "DSTAR1", as it would appear in spot.dvGroup) to its
+	// directory entry, using the same lazily-created singleton group directory classify() below
+	// consults. Returns {call, name, module} or null (including when smartGroups is disabled).
+	// Exposed for simulator.js, which builds D-STAR spots directly rather than through classify().
+	static lookupGroup(call) {
+		if (!call || (config.dstar.smartGroups && config.dstar.smartGroups.disabled)) {
+			return null;
+		}
+		return getGroupDirectory().lookup(call.toUpperCase().padEnd(8, ' ').substring(0, 8));
 	}
 
 	start() {
@@ -440,6 +469,7 @@ class DstarReceiver extends EventEmitter {
 		let dest = formatNode(record.dest);
 		let voiceMinDuration = this.options.minVoiceDuration;
 		let isVoice = false;
+		let group = null;
 
 		if (ur.startsWith('CQCQCQ')) {
 			isVoice = true;
@@ -462,6 +492,15 @@ class DstarReceiver extends EventEmitter {
 			if (!dest) {
 				dest = formatNode(ur.substring(1, 8) + ' ');
 			}
+		} else if (this.groupDirectory && this.groupDirectory.isUnsubscribe(ur)) {
+			// Unsubscribing from a QuadNet Smart Group (e.g. "DSTAR1 T"): control traffic, like
+			// an ircDDB unlink, never alert
+			return events;
+		} else if (this.groupDirectory && (group = this.groupDirectory.lookup(ur))) {
+			// Subscribing to (or keying up while already subscribed to) a Smart Group (e.g.
+			// "DSTAR1", "QNET20 C"): voice relayed by the group's routing server (KN4RSC), not to
+			// a reflector - see the "no reflector" event below
+			isVoice = true;
 		} else if (callsignRegex.test(ur.trim())) {
 			// Callsign routing (directed call)
 			isVoice = !this.options.ignoreDirectedCalls;
@@ -472,7 +511,8 @@ class DstarReceiver extends EventEmitter {
 
 		if (isVoice) {
 			if (record.duration === undefined || record.duration >= voiceMinDuration) {
-				events.push({type: 'active', node, reflector: dest});
+				// A Smart Group event carries no reflector at all (the group has none of its own)
+				events.push(group ? {type: 'active', node, group} : {type: 'active', node, reflector: dest});
 			}
 		}
 
@@ -507,10 +547,11 @@ class DstarReceiver extends EventEmitter {
 		// dedupe key is computed and the spot is built, so a repeater-only report ("M3LEE heard
 		// on GB7ME-B", GB7ME-B currently linked to REF030-C) dedupes and reads by reflector, the
 		// same as if the reflector had been reported directly. A "linked" event always carries
-		// its own reflector already, so this only ever applies to "active" events. Never let a
-		// lookup failure break event processing.
+		// its own reflector already, and a Smart Group event has no reflector at all (the group
+		// has none of its own), so this only ever applies to a reflector-less "active" event with
+		// no group. Never let a lookup failure break event processing.
 		let linkSource = null;
-		if (event.node && !event.reflector) {
+		if (event.node && !event.reflector && !event.group) {
 			try {
 				let link = this.linkDirectory && this.linkDirectory.lookup(event.node);
 				if (link) {
@@ -525,9 +566,11 @@ class DstarReceiver extends EventEmitter {
 		// One alert per callsign, event and *place*, regardless of which feed reported it. A
 		// reflector event is keyed by the reflector callsign without its module, so the same
 		// transmission seen by QuadNet ("REF030-C via N4EDO-B") and by dstarusers.org as a
-		// module row ("REF030-C", no node) collapses into one.
-		// Events without a reflector are keyed by the node (undefined for none, hence the || '').
-		let place = event.reflector ? event.reflector.split('-')[0] : (event.node || '');
+		// module row ("REF030-C", no node) collapses into one. A Smart Group event is keyed by
+		// the group callsign, regardless of which repeater/hotspot module reported it.
+		// Events without a reflector or group are keyed by the node (undefined for none, hence
+		// the || '').
+		let place = event.group ? event.group.call : (event.reflector ? event.reflector.split('-')[0] : (event.node || ''));
 		let key = `${record.my}|${event.type}|${place}`;
 		// Suppress repeats within dedupeInterval of the previous record's *own* time, not of
 		// the time we saw it: at startup the feeds are primed with up to an hour of old records,
@@ -573,6 +616,10 @@ class DstarReceiver extends EventEmitter {
 		if (linkSource) {
 			spot.dvReflectorSource = linkSource;
 		}
+		if (event.group) {
+			spot.dvGroup = event.group.call;
+			spot.dvGroupName = event.group.name;
+		}
 
 		let gateway = formatNode(record.rpt2);
 		if (gateway) {
@@ -607,6 +654,8 @@ class DstarReceiver extends EventEmitter {
 		let where = spot.dvNode || spot.dvReflector;
 		if (spot.dvNode && spot.dvReflector) {
 			where = `${spot.dvReflector} via ${spot.dvNode}`;
+		} else if (spot.dvGroup) {
+			where = `${spot.dvGroupName} (${spot.dvGroup}) via ${spot.dvNode}`;
 		}
 
 		if (event.type === 'linked') {

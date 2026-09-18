@@ -9,7 +9,7 @@ It is a Node.js application which spawns separate matcher processes (via IPC) to
 `npm run local-dev` starts a complete local stack in Docker (or Podman with the `podman-docker`
 shim): MongoDB, Redis, the web app (if a `hamalert-web` checkout sits next to this repo) and
 the server itself, using the credential-free `config-local.js`. It seeds a test user
-(`N0CALL` / `testpass123`) with two D-STAR triggers (`DSTAR_CATCHALL=1` adds a catch-all for every D-STAR spot) and prints how to connect over telnet, how
+(`N0CALL` / `testpass123`) with three D-STAR triggers (`DSTAR_CATCHALL=1` adds a catch-all for every D-STAR spot) and prints how to connect over telnet, how
 to simulate a spot, and where the web app is. Ctrl-C tears everything down.
 
 ```sh
@@ -43,10 +43,12 @@ ircDDB never see.
 
 Spots have `mode: 'dstar'` and `source` set to the name of the feed that reported them
 (`quadnet`, `ircddb` or `dstarusers`), plus the fields `dvEvent` (`active` or `linked`),
-`dvNode` (e.g. `W4HFH-C`) and `dvReflector` (e.g. `REF030-C`). The matcher accepts
-`dvNode`/`dvReflector` conditions with or without the module letter. A trigger with no `source`
-condition matches D-STAR spots from any of the three feeds; use `mode: 'dstar'` (or leave source
-unset) rather than a specific feed name to match D-STAR generally.
+`dvNode` (e.g. `W4HFH-C`) and `dvReflector` (e.g. `REF030-C`) - or, for a QuadNet "Smart Group"
+event, `dvGroup`/`dvGroupName` instead of `dvReflector` (see "Smart Groups" below). The matcher
+accepts `dvNode`/`dvReflector` conditions with or without the module letter, and a `dvGroup`
+condition (exact match). A trigger with no `source` condition matches D-STAR spots from any of
+the three feeds; use `mode: 'dstar'` (or leave source unset) rather than a specific feed name to
+match D-STAR generally.
 
 `dstar.js`'s `DstarReceiver.enrichSpot()` resolves spotter and frequency/band before a spot leaves
 the module, from the QuadNet (`openquad.net`) and ircDDB (`status.ircddb.net`) repeater lists
@@ -80,6 +82,31 @@ page>` (e.g. `tools/fixtures/dstarusers-lastheard.html`).
 Test the node directory lookup on its own (also no database needed): `node
 tools/dstarNodeTest.js <node> [<node> ...]`, e.g. `node tools/dstarNodeTest.js 2E0CMS-B
 W4HFH-C ZZ9ZZZ-C`.
+
+### Smart Groups
+
+QuadNet "Smart Groups" are STARnet-style routing groups: a user puts a group callsign in the
+radio's UR field (e.g. `DSTAR1`, or `QNET20 C`) and keys up; the group server (`KN4RSC`)
+subscribes them and relays their audio to every other subscriber, the same way any other UR
+routing works, just without a reflector involved. `classify()` would otherwise drop these UR
+values entirely (they are neither `CQCQCQ`, a link command, area routing, nor callsign-shaped),
+so `dstar_groups.js`'s `DstarGroupDirectory` resolves them to the group they name.
+
+Group *definitions* (not activity) are fetched hourly from
+`https://www.openquad.net/starnet.php` (`config.dstar.smartGroups`), an HTML page parsed by
+`DstarGroupDirectory.parseStarnetPage()`. Activity still comes only from the QuadNet heard log
+`dstar.js` already tails. Lookups work immediately from `config.dstar.smartGroups.static` (a
+small seed list) before the first fetch completes, and again if a fetch ever fails while the
+dump file was empty; like `dstar_nodes.js` and `dstar_links.js`, the merged map is persisted to
+`dumpFile` so a restart has data right away.
+
+A Smart Group event becomes a spot with `dvGroup` (e.g. `DSTAR1`, `QNET20 C` - the group's
+Subscribe UR value) and `dvGroupName` (e.g. `QuadNet Array`) instead of `dvReflector` - a group
+has no reflector of its own, so the reflector link directory is never consulted for these events,
+and they dedupe by group callsign rather than by node. A matching group's unsubscribe UR (e.g.
+`DSTAR1 T`) is control traffic, like an ircDDB unlink, and never alerts. The matcher accepts a
+`dvGroup` condition (exact string match, e.g. `DSTAR1`); a trigger with no `source` condition
+still matches Smart Group spots from any feed, same as any other D-STAR spot.
 
 ### Reflector link directory
 

@@ -11,11 +11,17 @@ const DstarReceiver = require('../dstar');
 const fixturesDir = path.join(__dirname, '..', 'tools', 'fixtures');
 const readFixture = name => fs.readFileSync(path.join(fixturesDir, name), 'utf8');
 
-// DstarReceiver.prototype.classify() only reads this.options, so it can be exercised without
-// constructing a real DstarReceiver - construction would call getNodeDirectory(), which does a
-// real network fetch (see dstar_nodes.js).
-function classify(record) {
-	let fakeReceiver = {options: {minVoiceDuration: 2, minVoiceDurationLinkCommand: 5, ignoreDirectedCalls: true}};
+// DstarReceiver.prototype.classify() only reads this.options and this.groupDirectory, so it can
+// be exercised without constructing a real DstarReceiver - construction would call
+// getNodeDirectory()/getGroupDirectory(), which do real network fetches (see dstar_nodes.js,
+// dstar_groups.js). this.groupDirectory is how classify() consults the QuadNet Smart Group
+// directory (see dstar_groups.js's isUnsubscribe()/lookup()); tests that care about Smart Group
+// classification pass a stub with those two methods as groupDirectory, below.
+function classify(record, groupDirectory) {
+	let fakeReceiver = {
+		options: {minVoiceDuration: 2, minVoiceDurationLinkCommand: 5, ignoreDirectedCalls: true},
+		groupDirectory
+	};
 	return DstarReceiver.prototype.classify.call(fakeReceiver, record);
 }
 
@@ -57,7 +63,7 @@ test('linkCommandRegex rejects non-link URs', () => {
 
 test('quadnetLineRegex/parseQuadnetLine parses every line of the quadnet-ics fixture', () => {
 	let lines = readFixture('quadnet-ics.txt').split('\n').filter(Boolean);
-	assert.equal(lines.length, 40);
+	assert.equal(lines.length, 44);
 	for (let line of lines) {
 		let record = DstarReceiver.parseQuadnetLine(line);
 		assert.ok(record, line);
@@ -138,6 +144,63 @@ test('classify: info/unlink/echo control commands never produce events', () => {
 	assert.deepEqual(classify({feed: 'quadnet', my: 'KI4LAX', ur: '       I', rpt1: 'KI4LAX B', rpt2: 'KI4LAX G', dest: '        ', duration: 0.44}), []);
 	assert.deepEqual(classify({feed: 'quadnet', my: 'SP5PA', ur: '       U', rpt1: 'SP5PA  B', rpt2: 'SP5PA  G', dest: '        ', duration: 1.04}), []);
 	assert.deepEqual(classify({feed: 'quadnet', my: 'SP5PA', ur: '       E', rpt1: 'SP5PA  B', rpt2: 'SP5PA  G', dest: '        ', duration: 2.74}), []);
+});
+
+// A minimal stand-in for DstarGroupDirectory (dstar_groups.js), built directly from a small list
+// of groups instead of by fetching/parsing starnet.php. Exposes the same lookup(ur)/isUnsubscribe(ur)
+// contract classify() consults via this.groupDirectory (see the classify() helper above).
+function makeGroupDirectory(groups) {
+	let subscribeMap = new Map();
+	let unsubscribeMap = new Map();
+	for (let group of groups) {
+		subscribeMap.set(group.subscribe.padEnd(8, ' ').substring(0, 8), {call: group.subscribe, name: group.name, module: group.module});
+		if (group.unsubscribe) {
+			unsubscribeMap.set(group.unsubscribe.padEnd(8, ' ').substring(0, 8), true);
+		}
+	}
+	return {
+		lookup: ur => subscribeMap.get(ur) || null,
+		isUnsubscribe: ur => unsubscribeMap.has(ur)
+	};
+}
+
+test('classify: QuadNet Smart Group subscribe key-ups are active voice on the group, not a reflector', () => {
+	let groupDirectory = makeGroupDirectory([
+		{subscribe: 'DSTAR1', unsubscribe: 'DSTAR1 T', name: 'QuadNet Array', module: 'KN4RSC-A'},
+		{subscribe: 'DELINK', unsubscribe: 'DELINK T', name: 'Delaware Talk Group', module: 'KN4RSC-D'}
+	]);
+
+	// The first key-up (1.58s, dest blank) is dropped by the existing minVoiceDuration filter,
+	// same as any other short transmission
+	let shortKeyup = DstarReceiver.parseQuadnetLine('2026-09-18 02:00:27    1.58s:  0%: 0.0% N4EDO___/ID52 DSTAR1__ N4EDO__B N4EDO__G JONATHAN_ID52_______ ________');
+	assert.deepEqual(classify(shortKeyup, groupDirectory), []);
+
+	// The next one (4.38s, dest now shows the server module) alerts, attaching the group instead
+	// of a reflector - dest is never consulted for a group event
+	let longKeyup = DstarReceiver.parseQuadnetLine('2026-09-18 02:01:10    4.38s:  0%: 0.0% N4EDO___/ID52 DSTAR1__ N4EDO__B N4EDO__G JONATHAN_ID52_______ KN4RSC_A');
+	assert.deepEqual(classify(longKeyup, groupDirectory), [
+		{type: 'active', node: 'N4EDO-B', group: {call: 'DSTAR1', name: 'QuadNet Array', module: 'KN4RSC-A'}}
+	]);
+
+	// "DELINK" here is just another Smart Group's subscribe code (Delaware Talk Group) - despite
+	// the name, it is not an unlink command
+	let delinkKeyup = DstarReceiver.parseQuadnetLine('2026-09-18 02:07:03    3.78s:  0%: 0.0% N4EDO___/ID52 DELINK__ N4EDO__B N4EDO__G JONATHAN_ID52_______ ________');
+	assert.deepEqual(classify(delinkKeyup, groupDirectory), [
+		{type: 'active', node: 'N4EDO-B', group: {call: 'DELINK', name: 'Delaware Talk Group', module: 'KN4RSC-D'}}
+	]);
+});
+
+test('classify: QuadNet Smart Group unsubscribe command never alerts', () => {
+	let groupDirectory = makeGroupDirectory([
+		{subscribe: 'DSTAR1', unsubscribe: 'DSTAR1 T', name: 'QuadNet Array', module: 'KN4RSC-A'}
+	]);
+	let record = {feed: 'quadnet', my: 'N4EDO', ur: 'DSTAR1 T', rpt1: 'N4EDO  B', rpt2: 'N4EDO  G', dest: '        ', duration: 5};
+	assert.deepEqual(classify(record, groupDirectory), []);
+});
+
+test('classify: without a group directory, a Smart Group UR is not callsign-shaped and never alerts', () => {
+	let record = {feed: 'quadnet', my: 'N4EDO', ur: 'DSTAR1  ', rpt1: 'N4EDO  B', rpt2: 'N4EDO  G', dest: '        ', duration: 5};
+	assert.deepEqual(classify(record), []);
 });
 
 test('classify: dstarusers.org rows pass their own pre-built events straight through', () => {

@@ -129,7 +129,7 @@ function notifySpot(spot) {
 	normalizeSpot(spot, (spot) => {
 		// D-STAR spots without a resolvable frequency (e.g. reflector reports) name the place instead
 		// of a band, which would only ever read "unknown" here
-		let where = (spot.frequency !== undefined) ? `${spot.frequency} MHz` : (spot.mode === 'dstar' ? (spot.dvReflector || spot.dvNode || spot.band) : spot.band);
+		let where = (spot.frequency !== undefined) ? `${spot.frequency} MHz` : (spot.mode === 'dstar' ? (spot.dvGroupName || spot.dvReflector || spot.dvNode || spot.band) : spot.band);
 		console.log(`Spot: ${spot.time} ${spot.fullCallsign} on ${where} (${spot.mode}), from ${spot.spotter} via ${spot.source}`);
 		
 		if (spot.dxcc && spot.dxcc.dxcc == 344 && !spot.user_id) {
@@ -145,7 +145,7 @@ function runMatcher(spot) {
 	// Find matching triggers using matcher via JSON-RPC
 	let conditions = {};
 	
-	let fields = ['source', 'callsign', 'fullCallsign', 'summitAssociation', 'summitRegion', 'summitPoints', 'summitActivations', 'summitRef', 'wwffRef', 'iotaGroupRef', 'mode', 'time', 'spotter', 'state', 'spotterState', 'qsl', 'prefix', 'spotterPrefix', 'speed', 'snr', 'dvEvent'];
+	let fields = ['source', 'callsign', 'fullCallsign', 'summitAssociation', 'summitRegion', 'summitPoints', 'summitActivations', 'summitRef', 'wwffRef', 'iotaGroupRef', 'mode', 'time', 'spotter', 'state', 'spotterState', 'qsl', 'prefix', 'spotterPrefix', 'speed', 'snr', 'dvEvent', 'dvGroup', 'dvGroupName'];
 	for (let field of fields) {
 		if (spot[field] !== undefined) {
 			conditions[field] = spot[field];
@@ -183,6 +183,9 @@ function runMatcher(spot) {
 	}
 	if (spot.dvReflector) {
 		conditions.dvReflector = [spot.dvReflector, spot.dvReflector.split('-')[0]];
+	}
+	if (spot.dvGroup) {
+		conditions.dvGroup = spot.dvGroup;
 	}
 	
 	// Add special values 'hf', 'vhf' and 'uhf' to band (only for spots that have a frequency;

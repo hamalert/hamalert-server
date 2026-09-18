@@ -179,6 +179,9 @@ class TelnetConnection extends EventEmitter {
 				}
 				if (spot.dvReflector) {
 					commentElements.push(spot.dvReflector);
+				} else if (spot.dvGroup) {
+					// Smart Group event (see dstar_groups.js): no reflector, show the group instead
+					commentElements.push(spot.dvGroup);
 				}
 			}
 			if (this.clusterMode == 've7cc' && spot.comment) {

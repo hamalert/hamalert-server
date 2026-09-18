@@ -1,7 +1,7 @@
 # Running HamAlert locally
 
 One-command local dev environment for developing and testing spot sources. It runs MongoDB
-and Redis in Docker, seeds a test user and two D-STAR triggers, and starts the server itself
+and Redis in Docker, seeds a test user and three D-STAR triggers, and starts the server itself
 against `config-local.js` — no production credentials needed at all. Push notifications
 (APNS/FCM), Threema, and the RBN/cluster telnet feeds are left out; they need real credentials
 or a real callsign login. If you also have a `hamalert-web` checkout with a `Dockerfile.dev`,
@@ -28,8 +28,9 @@ This:
 2. Starts `mongo:7` on `127.0.0.1:27117` and `redis:7` on `127.0.0.1:6479` (non-default ports,
    so they don't clash with a MongoDB/Redis you already have running locally).
 3. Waits for both to accept connections, then runs `tools/seedLocalUser.js` to create user
-   `N0CALL` (password `testpass123`) with two triggers (telnet and app actions): one for
-   N0CALL's own D-STAR callsign, one for anyone on reflector REF030. Start with
+   `N0CALL` (password `testpass123`) with three triggers (telnet and app actions): one for
+   N0CALL's own D-STAR callsign, one for anyone on reflector REF030, one for anyone on the
+   `DSTAR1` QuadNet Smart Group. Start with
    `DSTAR_CATCHALL=1 npm run local-dev` to also seed a catch-all trigger that matches every
    D-STAR spot from every feed (condition `mode: dstar` only, which the web trigger editor
    deliberately doesn't allow); delete it on the website to go back to specific triggers. The
@@ -62,6 +63,16 @@ automatically (the `hamalert-dev` network is left in place so the next run is fa
   Frequency/band are resolved by `dstar.js`'s `DstarReceiver.enrichSpot()` from the QuadNet/ircDDB
   repeater lists by repeater module (here `N0CALL-B`); if a node isn't listed there, the band is guessed from the module letter
   (A = 23cm, B = 70cm, C = 2m, flagged `bandIsGuessed`), otherwise `band` is `"unknown"`.
+- Simulate a QuadNet Smart Group event (see the README's "Smart Groups" section) with `dvGroup`
+  instead of `dvReflector` - the group's display name is resolved automatically:
+  ```sh
+  curl -X POST http://127.0.0.1:1983/sendSpot -H 'Content-Type: application/json' -d '{
+    "user_id": "<user_id>", "source": "quadnet", "fullCallsign": "N0CALL", "mode": "dstar",
+    "dvEvent": "active", "dvNode": "N0CALL-B", "dvGroup": "DSTAR1"
+  }'
+  ```
+  This matches the seeded "anyone on QuadNet Array (DSTAR1)" trigger; its `title` reads
+  `SIMULATED D-STAR N0CALL active on QuadNet Array (DSTAR1) via N0CALL-B`.
 - Live D-STAR spots from the real QuadNet/ircDDB feeds appear in the server log as
   `Spot: ... (dstar), from <gateway> via quadnet` (or `via ircddb`) once someone transmits
   (usually within a minute or two); `source` names the feed, `mode` is always `dstar`. These are

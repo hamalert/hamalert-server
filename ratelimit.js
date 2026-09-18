@@ -9,8 +9,9 @@ function dvKey(spot) {
 	if (!spot.dvEvent)
 		return undefined;
 	// Reflector without its module, matching the dedupe key in dstar.js: the same station may be
-	// reported on "REF030-C" by one feed and on plain "REF030" by another
-	let place = spot.dvReflector ? spot.dvReflector.split('-')[0] : (spot.dvNode || '');
+	// reported on "REF030-C" by one feed and on plain "REF030" by another. A Smart Group event
+	// (see dstar_groups.js) has no reflector at all; it's keyed by the group callsign instead.
+	let place = spot.dvGroup || (spot.dvReflector ? spot.dvReflector.split('-')[0] : (spot.dvNode || ''));
 	return `${spot.dvEvent}|${place}`;
 }
 

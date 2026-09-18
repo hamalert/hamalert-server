@@ -265,6 +265,23 @@ config.dstar = {
 		},
 		dumpFile: '/data/hamalert/cache/dstar-links.dump'
 	},
+	// QuadNet "Smart Group" directory (see dstar_groups.js): STARnet-style routing groups (put a
+	// group callsign like "DSTAR1" in the radio's UR field and key up; the group server relays it
+	// to every other subscriber). starnet.php is fetched hourly for group *definitions* only -
+	// never for activity, which still comes from the QuadNet heard log above.
+	smartGroups: {
+		url: 'https://www.openquad.net/starnet.php',
+		refreshInterval: 3600*1000,
+		timeout: 30000,
+		dumpFile: '/data/hamalert/cache/dstar-groups.dump',
+		// Seeds lookups before the first fetch completes, and again if the fetch ever fails while
+		// the dump file was empty (a fresh install with no dump and no network yet).
+		static: [
+			{subscribe: 'DSTAR1', unsubscribe: 'DSTAR1 T', name: 'QuadNet Array'},
+			{subscribe: 'QNET20 C', unsubscribe: 'QNET20 Z', name: 'QuadNet Tech Chat'}
+		],
+		disabled: false
+	},
 	dedupeInterval: 15*60*1000,		// one alert per callsign, event and place (reflector without module, else node) within this window
 	maxAge: 10*60*1000,				// ignore records older than this
 	headerMergeInterval: 10*60*1000,	// how long to remember ircDDB header records (TX message) for their stats record
@@ -384,7 +401,8 @@ config.matcher = {
 		'qsl',
 		'dvEvent',
 		'dvNode',
-		'dvReflector'
+		'dvReflector',
+		'dvGroup'
 	],
 	// Commonly used conditions for hash table optimization (cannot contain 'not' conditions!)
 	commonConditions: [
@@ -418,7 +436,8 @@ config.matcher = {
 		'qsl',
 		'dvEvent',
 		'dvNode',
-		'dvReflector'
+		'dvReflector',
+		'dvGroup'
 	]
 };
 

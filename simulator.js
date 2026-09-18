@@ -35,6 +35,20 @@ const DstarReceiver = require('./dstar');
 		"dvNode": "N0CALL-B",
 		"dvReflector": "REF030-C"
 	}
+
+	A QuadNet Smart Group (see dstar_groups.js) event carries dvGroup (e.g. "DSTAR1") instead of
+	dvReflector - a group has no reflector of its own. dvGroupName is resolved automatically from
+	the group directory (DstarReceiver.lookupGroup()) and doesn't need to be sent:
+
+	{
+		"user_id": "586ff45b10a3c6d9c2bb11cf",
+		"source": "quadnet",
+		"fullCallsign": "N0CALL",
+		"mode": "dstar",
+		"dvEvent": "active",
+		"dvNode": "N0CALL-B",
+		"dvGroup": "DSTAR1"
+	}
 */
 class SimulatorReceiver extends EventEmitter {
 	constructor(db) {
@@ -76,6 +90,16 @@ class SimulatorReceiver extends EventEmitter {
 			spot.dvNode = String(req.body.dvNode).toUpperCase();
 			if (req.body.dvReflector) {
 				spot.dvReflector = String(req.body.dvReflector).toUpperCase();
+			} else if (req.body.dvGroup) {
+				// QuadNet Smart Group (see dstar_groups.js): no reflector of its own, so only
+				// looked at when dvReflector wasn't given. Look up the group's display name from
+				// the same directory classify() uses; an unrecognized group still simulates fine,
+				// just without a name to show alongside the group callsign.
+				spot.dvGroup = String(req.body.dvGroup).toUpperCase();
+				let group = DstarReceiver.lookupGroup(spot.dvGroup);
+				if (group) {
+					spot.dvGroupName = group.name;
+				}
 			}
 			if (req.body.frequency !== undefined) {
 				// Optional: if omitted, DstarReceiver.enrichSpot() resolves it below
@@ -86,6 +110,8 @@ class SimulatorReceiver extends EventEmitter {
 			let where = spot.dvNode;
 			if (spot.dvReflector) {
 				where = (spot.dvEvent === 'linked') ? `${spot.dvNode} to ${spot.dvReflector}` : `${spot.dvReflector} via ${spot.dvNode}`;
+			} else if (spot.dvGroup) {
+				where = spot.dvGroupName ? `${spot.dvGroupName} (${spot.dvGroup}) via ${spot.dvNode}` : `${spot.dvGroup} via ${spot.dvNode}`;
 			}
 			let verb = (spot.dvEvent === 'linked') ? 'linked' : 'active on';
 			spot.title = `SIMULATED D-STAR ${spot.fullCallsign} ${verb} ${where}`;

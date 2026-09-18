@@ -65,6 +65,8 @@ exports.makeSpotParams = function(spot, comment, actions) {
 		dvEvent: spot.dvEvent,
 		dvNode: spot.dvNode,
 		dvReflector: spot.dvReflector,
+		dvGroup: spot.dvGroup,
+		dvGroupName: spot.dvGroupName,
 		dvSuffix: spot.dvSuffix,
 		dvDuration: spot.dvDuration
 	};

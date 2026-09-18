@@ -2,7 +2,7 @@
 	One-command local development environment for the HamAlert server (see LOCAL_DEV.md).
 
 	Starts MongoDB and Redis (and, if a hamalert-web checkout is found, the web app) in Docker
-	containers, seeds a test user and two D-STAR triggers, then runs the server itself against
+	containers, seeds a test user and three D-STAR triggers, then runs the server itself against
 	config-local.js (via HAMALERT_CONFIG). On exit the containers are torn down again unless
 	--keep is given.
 
