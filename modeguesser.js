@@ -1,4 +1,4 @@
-const config = require('./config');
+const config = require('./config_loader');
 
 const fhRegex = /\bf\/h\b/i;
 

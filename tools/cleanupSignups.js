@@ -1,6 +1,6 @@
 const MongoClient = require('mongodb').MongoClient;
 const assert = require('assert');
-const config = require('../config');
+const config = require('../config_loader');
 
 let client = new MongoClient(config.mongodb.url)
 client.connect((err) => {

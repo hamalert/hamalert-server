@@ -5,6 +5,7 @@ const RbnReceiver = require('./rbn');
 const PskReporterReceiver = require('./pskreporter');
 const ClusterReceiver = require('./cluster');
 const SimulatorReceiver = require('./simulator');
+const DstarReceiver = require('./dstar');
 //const EmailNotifier = require('./notify/email');
 const ThreemaNotifier = require('./notify/threema');
 const URLNotifier = require('./notify/url');
@@ -25,7 +26,7 @@ const assert = require('assert');
 const clone = require('clone');
 const async = require('async');
 const TTLCache = require('@isaacs/ttlcache');
-const config = require('./config');
+const config = require('./config_loader');
 
 const summitRefRegex = /([a-zA-Z0-9]{1,8}\/[a-zA-Z]{2})\-?((?:[0-9][0-9][1-9])|(?:[0-9][1-9][0])|(?:[1-9][0-9][0]))/;
 const sotaRefRegex = /^(.+)\/(.+)\-(\d+)$/;
@@ -76,7 +77,6 @@ client.connect((err) => {
 
 const redis = new Redis(config.redis.server);
 
-
 function startReceivers() {
 	let spotReceiver = new SotaSpotReceiver(db);
 	spotReceiver.on('spot', notifySpot);
@@ -105,6 +105,12 @@ function startReceivers() {
 	let simulatorReceiver = new SimulatorReceiver(db);
 	simulatorReceiver.on('spot', notifySpot);
 	simulatorReceiver.start();
+
+	if (config.dstar && !config.dstar.disabled) {
+		let dstarReceiver = new DstarReceiver({db});
+		dstarReceiver.on('spot', notifySpot);
+		dstarReceiver.start();
+	}
 	
 	/*notifySpot({
 		source: "sotawatch",
@@ -121,7 +127,10 @@ function startReceivers() {
 function notifySpot(spot) {
 	statsUpdater.countSpot(spot.source);
 	normalizeSpot(spot, (spot) => {
-		console.log(`Spot: ${spot.time} ${spot.fullCallsign} on ${spot.frequency} MHz (${spot.mode}), from ${spot.spotter} via ${spot.source}`);
+		// D-STAR spots without a resolvable frequency (e.g. reflector reports) name the place instead
+		// of a band, which would only ever read "unknown" here
+		let where = (spot.frequency !== undefined) ? `${spot.frequency} MHz` : (spot.mode === 'dstar' ? (spot.dvGroupName || spot.dvReflector || spot.dvNode || spot.band) : spot.band);
+		console.log(`Spot: ${spot.time} ${spot.fullCallsign} on ${where} (${spot.mode}), from ${spot.spotter} via ${spot.source}`);
 		
 		if (spot.dxcc && spot.dxcc.dxcc == 344 && !spot.user_id) {
 			// North Korea, most likely fake
@@ -136,7 +145,7 @@ function runMatcher(spot) {
 	// Find matching triggers using matcher via JSON-RPC
 	let conditions = {};
 	
-	let fields = ['source', 'callsign', 'fullCallsign', 'summitAssociation', 'summitRegion', 'summitPoints', 'summitActivations', 'summitRef', 'wwffRef', 'iotaGroupRef', 'mode', 'time', 'spotter', 'state', 'spotterState', 'qsl', 'prefix', 'spotterPrefix', 'speed', 'snr'];
+	let fields = ['source', 'callsign', 'fullCallsign', 'summitAssociation', 'summitRegion', 'summitPoints', 'summitActivations', 'summitRef', 'wwffRef', 'iotaGroupRef', 'mode', 'time', 'spotter', 'state', 'spotterState', 'qsl', 'prefix', 'spotterPrefix', 'speed', 'snr', 'dvEvent', 'dvGroup', 'dvGroupName'];
 	for (let field of fields) {
 		if (spot[field] !== undefined) {
 			conditions[field] = spot[field];
@@ -167,10 +176,28 @@ function runMatcher(spot) {
 	if (spot.iotaGroupRef) {
 		conditions.iotaGroupRef = [spot.iotaGroupRef, "*"];
 	}
+
+	// D-STAR node/reflector: allow matching with or without module letter ("W4HFH-C" or "W4HFH")
+	if (spot.dvNode) {
+		conditions.dvNode = [spot.dvNode, spot.dvNode.split('-')[0]];
+	}
+	if (spot.dvReflector) {
+		conditions.dvReflector = [spot.dvReflector, spot.dvReflector.split('-')[0]];
+	}
+	if (spot.dvGroup) {
+		conditions.dvGroup = spot.dvGroup;
+	}
 	
-	// Add special values 'hf', 'vhf' and 'uhf' to band
+	// Add special values 'hf', 'vhf' and 'uhf' to band (only for spots that have a frequency;
+	// for a spot with a band but no frequency - e.g. a D-STAR spot with a guessed band - derive
+	// the range from the band via config.bandRangesToBands instead)
 	let range;
-	if (spot.frequency > 30000) {
+	if (spot.frequency === undefined) {
+		range = undefined;
+		if (spot.band) {
+			range = Object.keys(config.bandRangesToBands).find((r) => config.bandRangesToBands[r].includes(spot.band));
+		}
+	} else if (spot.frequency > 30000) {
 		range = 'ehf';
 	} else if (spot.frequency > 3000) {
 		range = 'shf';
@@ -187,7 +214,9 @@ function runMatcher(spot) {
 	} else {
 		range = 'vlf';
 	}
-	conditions.band = [spot.band, range];
+	if (spot.band !== undefined) {
+		conditions.band = (range !== undefined) ? [spot.band, range] : [spot.band];
+	}
 	
 	// Add band slot condition
 	if (spot.dxcc && spot.band) {
@@ -354,13 +383,15 @@ function normalizeSpot(spot, callback) {
 			spot.spotterPrefix = spotterPrefix;
 		}
 	}
-	
-	// determine band
-	let band = config.bands.find((element) => {
-		return (element.from <= spot.frequency && element.to >= spot.frequency)
-	});
-	if (band !== undefined) {
-		spot.band = band.band;
+
+	// determine band (a source may pre-populate band, e.g. when it has no frequency)
+	if (spot.band === undefined && spot.frequency !== undefined) {
+		let band = config.bands.find((element) => {
+			return (element.from <= spot.frequency && element.to >= spot.frequency)
+		});
+		if (band !== undefined) {
+			spot.band = band.band;
+		}
 	}
 	
 	if (spot.band === "11m") {

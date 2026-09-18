@@ -1,7 +1,7 @@
 const MongoClient = require('mongodb').MongoClient
 const ObjectID = require('mongodb').ObjectID
 const assert = require('assert')
-const config = require('../config')
+const config = require('../config_loader')
 
 let client = new MongoClient(config.mongodb.url)
 client.connect(async (err) => {

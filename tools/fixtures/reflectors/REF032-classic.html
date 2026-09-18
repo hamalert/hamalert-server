@@ -1,0 +1,111 @@
+
+<!doctype html>
+<html lang="pl">
+<head>
+   <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+   <meta name="description" content="REF032 D-Star Reflector System for Ham Radio Operators." />
+   <meta name="keywords"    content="Ham Radio, D-Star, XReflector, XLX, XRF, DCS, REF, " />
+   <meta name="author"      content="SQ5DCP" />
+   <meta name="revisit"     content="After 30 Days" />
+   <meta name="robots"      content="SQ5DCP" />
+   
+   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    
+   <title>REF032 Reflector Dashboard</title>
+   <link rel="icon" href="./favicon.ico" type="image/vnd.microsoft.icon">
+
+   <link rel="stylesheet" href="./lib/css/bootstrap.min.css">
+   <link rel="stylesheet" href="./css/layout.css?d=20250914a">
+   <link rel="stylesheet" href="./css/themes.css">
+   <script src="./lib/js/jquery-3.4.1.slim.min.js"></script>
+
+
+   <script>
+      var PageRefresh;
+
+      function ReloadPage() {
+         document.location.reload();
+      }
+      PageRefresh = setTimeout(ReloadPage, 30000);
+
+      function SuspendPageRefresh() {
+        clearTimeout(PageRefresh);
+      }
+   </script>
+</head>
+<body class="bg-dark">
+   
+<div class="w-100 custom-width mx-auto bg-white">    
+   
+<div id="top" class="text-center text-lg-left pt-2 px-2">
+   REF032 D-STAR Reflector&nbsp;
+</div>
+
+<nav class="navbar navbar-expand-lg navbar-light bg-warning">
+
+<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#menu" aria-controls="menu" aria-expanded="false" aria-label="Toggle navigation">
+	<span class="navbar-toggler-icon"></span>
+</button>
+    <div class="collapse navbar-collapse order-2 order-lg-0" id="menu">
+		<ul class="navbar-nav mr-auto mt-2 mt-lg-0">
+            <li class="nav-item ml-2"><a href="./index.php?show=ref032" class="nav-link font-weight-bold">REF032</a></li>
+            <li class="nav-item ml-2"><a href="http://xlx132.dstar.radom.pl/" class="nav-link font-weight-bold">XLX132</a></li>
+            <li class="nav-item ml-2"><a href="./index.php?show=xlxinf" class="nav-link font-weight-bold">Info</a></li>
+		</ul>
+    </div>
+      <button id="theme-switcher"
+              class="btn btn-sm btn-outline-secondary ml-auto mr-2 order-1">
+        <span id="theme-icon">🌙</span>
+      </button>
+</nav> 
+
+
+<div id="main" class="table-responsive">
+<table class="table text-center">
+<tr>
+<td>
+
+<table class="table table-striped table-sm">
+<thead class="thead-light">
+ <tr><th class="text-light bg-dark" colspan="6">Linked Gateways&nbsp;<img src="/img/base-station-line-y.png"></th></tr>
+ <tr>
+   <th width="25">#</th>
+   <th>Module A</th>
+   <th>Module B</th>
+   <th>Module C</th>
+   <th>Module D</th>
+   <th>Module E</th>
+ </tr>
+ </thead>
+
+ 
+   <tr>
+      <td>1</td>
+      <td>NA9PL  B</td>
+      <td> </td>
+      <td> </td>
+      <td> </td>
+      <td> </td>
+   </tr>
+   
+   <tr>
+      <td>2</td>
+      <td>SR5UVR B</td>
+      <td> </td>
+      <td> </td>
+      <td> </td>
+      <td> </td>
+   </tr>
+   
+   <tr>
+      <td>3</td>
+      <td>SR7UVL B</td>
+      <td> </td>
+      <td> </td>
+      <td> </td>
+      <td> </td>
+   </tr>
+   </table>
+</td></tr></table>
+</body>
+</html>

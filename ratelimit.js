@@ -1,11 +1,28 @@
 const exitHook = require('async-exit-hook');
 const fs = require('fs');
-const config = require('./config');
+const config = require('./config_loader');
+
+// D-STAR identity of a spot, for the per-callsign+band+mode and per-callsign+frequency+mode
+// limiters: undefined for non-D-STAR spots, otherwise a key combining the event and reflector
+// (or node, if no reflector) so e.g. "linked to REF030-C" doesn't suppress "linked to REF058-E".
+function dvKey(spot) {
+	if (!spot.dvEvent)
+		return undefined;
+	// Reflector without its module, matching the dedupe key in dstar.js: the same station may be
+	// reported on "REF030-C" by one feed and on plain "REF030" by another. A Smart Group event
+	// (see dstar_groups.js) has no reflector at all; it's keyed by the group callsign instead.
+	let place = spot.dvGroup || (spot.dvReflector ? spot.dvReflector.split('-')[0] : (spot.dvNode || ''));
+	return `${spot.dvEvent}|${place}`;
+}
 
 class RateLimiter {
 	constructor() {
 		this.userRateLimiters = new Map();
-		
+
+		if (config.rateLimit.disabled) {
+			console.log('Rate limiting is DISABLED (config.rateLimit.disabled)');
+		}
+
 		if (fs.existsSync(config.rateLimit.dumpFile)) {
 			let dumpArr = JSON.parse(fs.readFileSync(config.rateLimit.dumpFile, {encoding: 'utf8'}));
 			for (let dumpEnt of dumpArr) {
@@ -22,11 +39,16 @@ class RateLimiter {
 	}
 	
 	checkLimit(spot, user) {
+		if (config.rateLimit.disabled) {
+			// local development: never rate-limit alerts, so every matching spot is visible
+			return {limitExceeded: false, generalLimitExceeded: false};
+		}
+
 		if (spot.user_id) {
 			// No rate limits for simulated spots
-			return true;
+			return {limitExceeded: false, generalLimitExceeded: false};
 		}
-		
+
 		// Do we already have a rate limiter for this user?
 		let uid = user._id.toString()
 		let rateLimiter = this.userRateLimiters.get(uid);
@@ -68,6 +90,7 @@ class UserRateLimiter {
 		let spotsPerCallsignFreqModeSota = 0;
 		let spotsPerCallsignFreqModeOthers = 0;
 		let now = Date.now();
+		let spotDvKey = dvKey(spot);
 		for (let cacheEntry of this.spotCache) {
 			if (limit && limit.interval > (now - cacheEntry.time)/1000) {
 				spots++;
@@ -81,7 +104,8 @@ class UserRateLimiter {
 			if (limitPerCallsignBandMode && limitPerCallsignBandMode.interval > (now - cacheEntry.time)/1000 &&
 				cacheEntry.callsign === spot.callsign &&
 				cacheEntry.band === spot.band &&
-				(cacheEntry.mode === spot.mode || cacheEntry.mode === undefined || spot.mode === undefined)) {
+				(cacheEntry.mode === spot.mode || cacheEntry.mode === undefined || spot.mode === undefined) &&
+				cacheEntry.dvKey === spotDvKey) {
 					spotsPerCallsignBandMode++;
 			}
 			
@@ -92,8 +116,9 @@ class UserRateLimiter {
 			if (limitPerCallsignFreqMode && limitPerCallsignFreqMode.interval > (now - cacheEntry.time)/1000 &&
 				cacheEntry.callsign === spot.callsign &&
 				(Math.abs(cacheEntry.frequency - spot.frequency) <= maxFrequencyDiff) &&
-				(cacheEntry.mode === spot.mode || cacheEntry.mode === undefined || spot.mode === undefined)) {
-				
+				(cacheEntry.mode === spot.mode || cacheEntry.mode === undefined || spot.mode === undefined) &&
+				cacheEntry.dvKey === spotDvKey) {
+
 				if (cacheEntry.source === "sotawatch")
 					spotsPerCallsignFreqModeSota++;
 				else
@@ -155,7 +180,8 @@ class UserRateLimiter {
 				frequency: spot.frequency,
 				mode: spot.mode,
 				time: now,
-				source: spot.source
+				source: spot.source,
+				dvKey: spotDvKey
 			});
 		}
 		

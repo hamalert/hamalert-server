@@ -4,7 +4,7 @@ const axios = require('axios')
 const { gunzip } = require('zlib')
 const { promisify } = require('util')
 const do_gunzip = promisify(gunzip)
-const config = require('./config')
+const config = require('./config_loader')
 
 class DxccLookup {
 	constructor() {
