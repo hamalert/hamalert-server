@@ -286,7 +286,7 @@ function saveSpot(trigger, spot) {
 	let dbSpot = clone(spot);
 	dbSpot.user_id = trigger.user._id;
 	dbSpot.actions = trigger.actions;
-	dbSpot.triggerComments = trigger.comment;
+	dbSpot.triggerComment = trigger.comment;
 	db.collection('spots').insertOne(dbSpot);
 
 	// Publish in Redis Stream

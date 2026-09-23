@@ -187,7 +187,9 @@ class TelnetConnection extends EventEmitter {
 				comment, spot.spotter);
 		} else if (this.clusterMode == 'json') {
 			let params = hamutil.makeSpotParams(spot);
-			params.triggerComment = triggerComment;
+			if (triggerComment) {
+				params.triggerComment = triggerComment;
+			}
 			line = JSON.stringify(params) + "\r\n";
 		} else {
 			line = sprintf("DX de %s  %-12s %-30s %sZ\r\n",

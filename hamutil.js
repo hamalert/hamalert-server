@@ -94,6 +94,8 @@ exports.makeSpotParams = function(spot, comment, actions) {
 	
 	if (comment) {
 		params.triggerComment = comment.join(', ');
+	} else if (spot.triggerComment) {
+		params.triggerComment = spot.triggerComment.join(', ');
 	}
 	
 	if (actions) {
