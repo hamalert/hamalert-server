@@ -1,4 +1,4 @@
-const config = require('../config');
+const config = require('../config_loader');
 const Notifier = require('./notifier');
 const APNSNotifier = require('./apns');
 const FCMNotifier = require('./fcm');
@@ -8,10 +8,13 @@ class AppNotifier extends Notifier {
 		super();
 		this.db = db;
 		
-		this.notifiers = [
-			new APNSNotifier(),
-			new FCMNotifier()
-		];
+		this.notifiers = [];
+		if (config.apns) {
+			this.notifiers.push(new APNSNotifier());
+		}
+		if (config.fcm) {
+			this.notifiers.push(new FCMNotifier());
+		}
 		
 		this.notifiers.forEach((notifier) => {
 			notifier.on('tokenunregistered', (token, user) => {

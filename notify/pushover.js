@@ -1,5 +1,5 @@
 const push = require('pushover-notifications');
-const config = require('../config');
+const config = require('../config_loader');
 const Notifier = require('./notifier');
 
 class PushoverNotifier extends Notifier {

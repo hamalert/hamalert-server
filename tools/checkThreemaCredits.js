@@ -1,5 +1,5 @@
 const axios = require('axios')
-const config = require('../config')
+const config = require('../config_loader')
 
 let credits = axios.get('https://msgapi.threema.ch/credits', {
 	params: {

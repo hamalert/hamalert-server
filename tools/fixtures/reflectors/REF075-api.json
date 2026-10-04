@@ -1,0 +1,19 @@
+{
+  "reflector": "REF075",
+  "version": "1.57",
+  "status_time": "12/09/2026 15:50:02",
+  "gateways": [
+    {
+      "callsign": "EA5RKD",
+      "module": "B"
+    },
+    {
+      "callsign": "ED2ZAB",
+      "module": "C"
+    },
+    {
+      "callsign": "ED4ZAD",
+      "module": "B"
+    }
+  ]
+}

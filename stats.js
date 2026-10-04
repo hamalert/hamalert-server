@@ -1,6 +1,6 @@
 const MongoClient = require('mongodb').MongoClient;
 const exitHook = require('async-exit-hook');
-const config = require('./config');
+const config = require('./config_loader');
 const assert = require('assert');
 
 class StatsUpdater {

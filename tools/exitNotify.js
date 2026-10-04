@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');
-const config = require('../config');
+const config = require('../config_loader');
 const pm2 = require('pm2');
 const fs = require('fs');
 

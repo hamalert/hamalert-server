@@ -1,4 +1,4 @@
-const config = require('./config');
+const config = require('./config_loader');
 const reconnect = require('reconnect-net');
 const carrier = require('carrier');
 const hamutil = require('./hamutil');

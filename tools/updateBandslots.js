@@ -1,7 +1,7 @@
 const axios = require('axios');
 const https = require('https');
 const MongoClient = require('mongodb').MongoClient;
-const config = require('../config');
+const config = require('../config_loader');
 const assert = require('assert');
 
 let client = new MongoClient(config.mongodb.url)

@@ -1,4 +1,4 @@
-const config = require('../config');
+const config = require('../config_loader');
 const hamutil = require('../hamutil');
 const net = require('net');
 const readline = require('readline');
@@ -146,8 +146,10 @@ class TelnetConnection extends EventEmitter {
 	}
 
 	notify(spot, triggerComment) {
-		let freq = sprintf("%.1f", spot.frequency*1000);
-		let spotter = spot.spotter.substring(0, 16 - freq.length);
+		// D-STAR presence spots have no frequency and may have no spotter (gateway); fall
+		// back to sensible placeholders so the fixed-width "DX de" line doesn't throw.
+		let freq = (spot.frequency !== undefined) ? sprintf("%.1f", spot.frequency*1000) : 'DV';
+		let spotter = (spot.spotter || '').substring(0, 16 - freq.length);
 		let spotterFreq = spotter + ':' + ' '.repeat(17 - freq.length - spotter.length) + freq;
 		let comment = spot.comment || '';
 		if (spot.source !== 'cluster') {
@@ -169,6 +171,18 @@ class TelnetConnection extends EventEmitter {
 			}
 			if (spot.iotaGroupRef) {
 				commentElements.push(spot.iotaGroupRef);
+			}
+			if (spot.dvEvent) {
+				commentElements.push(spot.dvEvent === 'linked' ? 'LINKED' : 'DV');
+				if (spot.dvNode) {
+					commentElements.push(spot.dvNode);
+				}
+				if (spot.dvReflector) {
+					commentElements.push(spot.dvReflector);
+				} else if (spot.dvGroup) {
+					// Smart Group event (see dstar_groups.js): no reflector, show the group instead
+					commentElements.push(spot.dvGroup);
+				}
 			}
 			if (this.clusterMode == 've7cc' && spot.comment) {
 				commentElements.push(spot.comment);

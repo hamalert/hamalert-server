@@ -1,9 +1,10 @@
-const config = require('./config');
+const config = require('./config_loader');
 const EventEmitter = require('events');
 const express = require('express');
 const bodyParser = require('body-parser');
 const util = require('util');
 const hamutil = require('./hamutil');
+const DstarReceiver = require('./dstar');
 
 /*
 	Receive simulated spots from web interface on localhost port.
@@ -17,6 +18,36 @@ const hamutil = require('./hamutil');
 		"summitRef": "HB/ZH-015",
 		"frequency": 14.062,
 		"mode": "cw"
+	}
+
+	D-STAR presence spots carry dvEvent ("active" or "linked"), dvNode (e.g. "W4HFH-C") and
+	optionally dvReflector (e.g. "REF030-C") instead of a frequency; frequency is optional and,
+	if omitted, is resolved by DstarReceiver.enrichSpot() (dstar.js) from the D-STAR node
+	directory. Source names the feed that would have reported it (quadnet/ircddb/dstarusers);
+	mode is always "dstar":
+
+	{
+		"user_id": "586ff45b10a3c6d9c2bb11cf",
+		"source": "quadnet",
+		"fullCallsign": "N0CALL",
+		"mode": "dstar",
+		"dvEvent": "active",
+		"dvNode": "N0CALL-B",
+		"dvReflector": "REF030-C"
+	}
+
+	A QuadNet Smart Group (see dstar_groups.js) event carries dvGroup (e.g. "DSTAR1") instead of
+	dvReflector - a group has no reflector of its own. dvGroupName is resolved automatically from
+	the group directory (DstarReceiver.lookupGroup()) and doesn't need to be sent:
+
+	{
+		"user_id": "586ff45b10a3c6d9c2bb11cf",
+		"source": "quadnet",
+		"fullCallsign": "N0CALL",
+		"mode": "dstar",
+		"dvEvent": "active",
+		"dvNode": "N0CALL-B",
+		"dvGroup": "DSTAR1"
 	}
 */
 class SimulatorReceiver extends EventEmitter {
@@ -36,7 +67,11 @@ class SimulatorReceiver extends EventEmitter {
 	}
 	
 	handleSendSpot(req, res) {
-		if (!req.body.user_id || !req.body.source || !req.body.fullCallsign || !req.body.frequency || !req.body.mode) {
+		// D-STAR is keyed by mode, not source: source now names the feed (quadnet/ircddb/
+		// dstarusers), all three of which carry mode 'dstar'.
+		let isDstar = (req.body.mode === 'dstar');
+		if (!req.body.user_id || !req.body.source || !req.body.fullCallsign || !req.body.mode ||
+			(isDstar ? !req.body.dvNode : !req.body.frequency)) {
 			res.status(400).end();
 			return;
 		}
@@ -46,12 +81,46 @@ class SimulatorReceiver extends EventEmitter {
 			source: req.body.source,
 			time: new Date().toISOString().substring(11, 16),
 			fullCallsign: req.body.fullCallsign,
-			frequency: req.body.frequency,
 			mode: req.body.mode
 		};
 		
-		spot.title = `SIMULATED spot ${spot.fullCallsign} (${hamutil.formatFrequency(spot.frequency)} ${spot.mode.toUpperCase()})`;
-		spot.rawText = `SIMULATED SPOT: ${spot.time} ${spot.fullCallsign} (${hamutil.formatFrequency(spot.frequency)} ${spot.mode.toUpperCase()}), from ${spot.source}`;
+		if (isDstar) {
+			// D-STAR presence spot: event/node/reflector instead of frequency
+			spot.dvEvent = (req.body.dvEvent === 'linked') ? 'linked' : 'active';
+			spot.dvNode = String(req.body.dvNode).toUpperCase();
+			if (req.body.dvReflector) {
+				spot.dvReflector = String(req.body.dvReflector).toUpperCase();
+			} else if (req.body.dvGroup) {
+				// QuadNet Smart Group (see dstar_groups.js): no reflector of its own, so only
+				// looked at when dvReflector wasn't given. Look up the group's display name from
+				// the same directory classify() uses; an unrecognized group still simulates fine,
+				// just without a name to show alongside the group callsign.
+				spot.dvGroup = String(req.body.dvGroup).toUpperCase();
+				let group = DstarReceiver.lookupGroup(spot.dvGroup);
+				if (group) {
+					spot.dvGroupName = group.name;
+				}
+			}
+			if (req.body.frequency !== undefined) {
+				// Optional: if omitted, DstarReceiver.enrichSpot() resolves it below
+				spot.frequency = req.body.frequency;
+			}
+			// Simulated spots bypass the D-STAR receiver, so apply its spotter/frequency/band enrichment here
+			DstarReceiver.enrichSpot(spot);
+			let where = spot.dvNode;
+			if (spot.dvReflector) {
+				where = (spot.dvEvent === 'linked') ? `${spot.dvNode} to ${spot.dvReflector}` : `${spot.dvReflector} via ${spot.dvNode}`;
+			} else if (spot.dvGroup) {
+				where = spot.dvGroupName ? `${spot.dvGroupName} (${spot.dvGroup}) via ${spot.dvNode}` : `${spot.dvGroup} via ${spot.dvNode}`;
+			}
+			let verb = (spot.dvEvent === 'linked') ? 'linked' : 'active on';
+			spot.title = `SIMULATED D-STAR ${spot.fullCallsign} ${verb} ${where}`;
+			spot.rawText = `SIMULATED SPOT: ${spot.time} ${spot.fullCallsign} ${verb} ${where}, from ${spot.source}`;
+		} else {
+			spot.frequency = req.body.frequency;
+			spot.title = `SIMULATED spot ${spot.fullCallsign} (${hamutil.formatFrequency(spot.frequency)} ${spot.mode.toUpperCase()})`;
+			spot.rawText = `SIMULATED SPOT: ${spot.time} ${spot.fullCallsign} (${hamutil.formatFrequency(spot.frequency)} ${spot.mode.toUpperCase()}), from ${spot.source}`;
+		}
 		
 		if (req.body.spotter) {
 			spot.spotter = req.body.spotter;
