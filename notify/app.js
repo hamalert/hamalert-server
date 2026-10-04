@@ -25,11 +25,12 @@ class AppNotifier extends Notifier {
 			return;
 		
 		this.db.collection('users').findOneAndUpdate({_id: user._id}, {$inc: {'badgeCount': 1}},
-			{projection: {'badgeCount': 1}, returnOriginal: false}, (err, r) => {
+			{projection: {'badgeCount': 1}, returnDocument: 'after'}, (err, r) => {
 			
 			console.log(r);
-			if (r && r.value) {
-				user.badgeCount = parseInt(r.value.badgeCount);
+			const updatedCount = r && r.value ? parseInt(r.value.badgeCount, 10) : NaN;
+			if (!isNaN(updatedCount)) {
+				user.badgeCount = updatedCount;
 			} else {
 				user.badgeCount = 1;
 			}
