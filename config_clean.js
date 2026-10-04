@@ -467,7 +467,8 @@ config.modeguesser = {
 		{from: 28.300, to: 29.000, mode: 'ssb'},
 		{from: 29.000, to: 29.200, mode: 'fm'},
 		{from: 50.000, to: 50.100, mode: 'cw'},
-		{from: 50.200, to: 50.300, mode: 'ssb'},
+		{from: 50.100, to: 50.300, mode: 'ssb'},
+		{from: 50.325, to: 50.500, mode: 'ssb'},
 		{from: 10489.505, to: 10489.539, mode: 'cw'},  // QO-100
 		{from: 10489.650, to: 10489.744, mode: 'ssb'}, // QO-100
 		{from: 10489.755, to: 10489.849, mode: 'ssb'}  // QO-100
