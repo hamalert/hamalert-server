@@ -2,7 +2,7 @@ const axios = require('axios');
 const MongoClient = require('mongodb').MongoClient;
 const config = require('../config_loader');
 const assert = require('assert');
-const parse = require('csv-parse');
+const { parse } = require('csv-parse');
 const fs = require('fs');
 const async = require('async');
 
@@ -31,7 +31,7 @@ function processParksList(db) {
 				let seenParkRefs = new Set();
 				let count = 0;
 				response.data
-					.pipe(parse({columns: true, relax_column_count: true, relax: true}))
+					.pipe(parse({columns: true, relax_column_count: true, relax_quotes: true}))
 					.on('data', (park) => {
 						count++;
 						if (park.reference === 'reference') {
@@ -150,7 +150,7 @@ function processParksList(db) {
 					callback(err);
 					return;
 				})
-				.pipe(parse({columns: ['Designator','Name','Location'], delimiter: ';', relax_column_count: true, relax: true, from_line: 2, encoding: 'latin1'}, (err, newParks) => {
+				.pipe(parse({columns: ['Designator','Name','Location'], delimiter: ';', relax_column_count: true, relax_quotes: true, from_line: 2, encoding: 'latin1'}, (err, newParks) => {
 					assert.equal(err, null);
 					
 					if (newParks.length < 200) {

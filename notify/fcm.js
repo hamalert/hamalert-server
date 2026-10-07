@@ -1,4 +1,5 @@
-const firebaseAdmin = require('firebase-admin');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getMessaging } = require('firebase-admin/messaging');
 const config = require('../config_loader');
 const Notifier = require('./notifier');
 const expand = require('expand-template')();
@@ -10,12 +11,12 @@ class FCMNotifier extends Notifier {
 	constructor() {
 		super();
 
-		const app = firebaseAdmin.initializeApp({
-		  credential: firebaseAdmin.credential.cert(config.fcm.serviceAccount),
+		const app = initializeApp({
+		  credential: cert(config.fcm.serviceAccount),
 		  databaseURL: config.fcm.databaseUrl
 		});
 
-		this.messaging = app.messaging();
+		this.messaging = getMessaging(app);
 	}
 	
 	notify(user, spot, comment) {
@@ -93,7 +94,7 @@ class FCMNotifier extends Notifier {
 				
 				// Check for NotRegistered errors (e.g. when users uninstall app)
 				for (let i = 0; i < response.responses.length; i++) {
-					if (!response.responses[i].success && response.responses[i].error.errorInfo.code === 'messaging/registration-token-not-registered') {
+					if (!response.responses[i].success && response.responses[i].error.code === 'messaging/registration-token-not-registered') {
 						console.log(`FCM token ${user.appTokens[i].token} is not registered anymore`);
 						this.emit('tokenunregistered', user.appTokens[i].token, user);
 					}
