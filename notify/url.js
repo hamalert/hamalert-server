@@ -2,6 +2,7 @@ const config = require('../config_loader');
 const Notifier = require('./notifier');
 const axios = require('axios');
 const hamutil = require('../hamutil');
+const {guardedLookup} = require('./url_guard');
 
 /* URL parameters (GET or POST):
 
@@ -39,12 +40,29 @@ class URLNotifier extends Notifier {
 	}
 	
 	sendURLNotification(user, params) {
+		let target;
+		try {
+			target = new URL(user.notificationUrl);
+		} catch (error) {
+			console.error(`Notification URL ${user.notificationUrl} is invalid: ${error}`);
+			return;
+		}
+		if (target.protocol !== 'http:' && target.protocol !== 'https:') {
+			console.error(`Notification URL ${user.notificationUrl} is not http(s)`);
+			return;
+		}
+
 		let axiosConfig = {
 			url: user.notificationUrl,
 			method: (user.notificationMethod === 'POST-JSON' ? 'POST' : user.notificationMethod),
 			headers: {
 				'User-Agent': 'HamAlert/1.0 (+https://hamalert.org)'
-			}
+			},
+			// Resolve the name ourselves and refuse non-public addresses. Axios
+			// reuses this function for redirects. proxy:false keeps the check on
+			// the destination rather than on an HTTP_PROXY hop.
+			lookup: guardedLookup,
+			proxy: false
 		};
 		if (user.notificationMethod === 'GET') {
 			axiosConfig.params = params;
