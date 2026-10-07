@@ -122,7 +122,13 @@ class TelnetConnection extends EventEmitter {
 				this.finalizeLogin();
 			} else {
 				bcrypt.compare(this.password, user.password, (err, res) => {
-					if (res === false) {
+					// bcryptjs reports a missing or non-string hash, and some
+					// malformed 60-character hashes, via err with res undefined.
+					// Anything other than an explicit match is a failed login.
+					if (err || res !== true) {
+						if (err) {
+							console.error(`Telnet login failed for ${this.username}: ${err.message}`);
+						}
 						this.socket.write("Login failed, check username and password\r\n");
 						this.socket.destroy();
 						return;
