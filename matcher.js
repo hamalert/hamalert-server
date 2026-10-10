@@ -259,6 +259,22 @@ function doMatch(query) {
 	return matchingTriggerUsers;
 }
 
+// Combine a trigger's notSpotter condition with the user's blocked list.
+// A callsign already on the trigger is left as stored and is not added again.
+// When the trigger has no notSpotter values, the blocked array itself is returned
+// and must not be mutated (it is shared by every such trigger for that user).
+function mergeNotSpotter(existing, blocked) {
+	if (!Array.isArray(blocked) || blocked.length === 0) {
+		return existing;
+	}
+	if (existing === undefined || existing === null || existing === '' || (Array.isArray(existing) && existing.length === 0)) {
+		return blocked;
+	}
+
+	const existingValues = Array.isArray(existing) ? existing : [existing];
+	return [...new Set(existingValues).union(new Set(blocked))];
+}
+
 function reloadTriggers(callback) {
 	if (reloading) {
 		if (callback)
@@ -270,12 +286,28 @@ function reloadTriggers(callback) {
 	let newConditionMaps = {};
 	let newTriggers = [];
 	let newTriggersWithoutCommonConditions = [];
+	let blockedSpottersByUser = new Map();
 	let begin = process.hrtime();
+
+	function applyBlockedSpotters(trigger) {
+		if (!trigger.user_id || !trigger.conditions) {
+			return;
+		}
+		let blocked = blockedSpottersByUser.get(String(trigger.user_id));
+		if (!blocked) {
+			return;
+		}
+		// Fold the user's blocked spotters into notSpotter so an existing exclusion
+		// list and the global list are one set. The returned array may be shared.
+		trigger.conditions.notSpotter = mergeNotSpotter(trigger.conditions.notSpotter, blocked);
+	}
 	
 	function addTrigger(trigger) {
 		if (trigger.disabled || trigger.actions.length == 0) {
 			return;
 		}
+
+		applyBlockedSpotters(trigger);
 		
 		if (trigger._id) {
 			trigger._id = trigger._id.toHexString();
@@ -330,10 +362,12 @@ function reloadTriggers(callback) {
 	
 	async.series([
 		callback => {
-			db.collection('triggers').find({}).forEach(addTrigger, callback);
-		},
-		callback => {
-			db.collection('users').find({}).forEach(user => {
+			// Users first, so each trigger (including the implicit MySpot trigger) can
+			// pick up that user's blocked spotter list while it is indexed.
+			db.collection('users').find({}, {projection: {_id: 1, username: 1, blockedSpotters: 1}}).forEach(user => {
+				if (Array.isArray(user.blockedSpotters) && user.blockedSpotters.length > 0) {
+					blockedSpottersByUser.set(String(user._id), user.blockedSpotters);
+				}
 				// Make internal trigger for the user's callsign
 				addTrigger({
 					internal: true,
@@ -342,6 +376,9 @@ function reloadTriggers(callback) {
 					conditions: {callsign: user.username}
 				});
 			}, callback);
+		},
+		callback => {
+			db.collection('triggers').find({}).forEach(addTrigger, callback);
 		}
 	], err => {
 		assert.equal(null, err);
