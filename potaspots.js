@@ -4,9 +4,9 @@ const EventEmitter = require('events');
 const util = require('util');
 const crypto = require('crypto');
 const sprintf = require('sprintf');
+const hamutil = require('./hamutil');
 
 const testRegex = /\btest(ing)?\b/i;
-const potaLocationStateRegex = /^((US|CA)-..,?)+$/;
 
 class PotaSpotReceiver extends EventEmitter {
 	constructor(db) {
@@ -112,9 +112,10 @@ class PotaSpotReceiver extends EventEmitter {
 			}
 			spot.title += ")";
 
-			// Look up US state
-			if (potaLocationStateRegex.test(jsonSpot.locationDesc)) {
-				spot.state = jsonSpot.locationDesc.split(',').map(str => str.replace('-', '_'));
+			// Use the park's US state or Canadian province only when the park is in exactly one.
+			let state = hamutil.potaStateFromPark(jsonSpot.locationDesc);
+			if (state) {
+				spot.state = state;
 			}
 			
 			//console.log(spot);

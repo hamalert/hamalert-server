@@ -32,8 +32,6 @@ const summitRefRegex = /([a-zA-Z0-9]{1,8}\/[a-zA-Z]{2})\-?((?:[0-9][0-9][1-9])|(
 const sotaRefRegex = /^(.+)\/(.+)\-(\d+)$/;
 const wwffRefRegex = /\b([a-z0-9]{1,5})-(\d{4})\b/i;
 const iotaRefRegex = /(?:^|\s)(AF|AN|AS|EU|NA|OC|SA)[ -]?(\d{3})\b/i;
-const potaLocationStateRegex = /^((US|CA)-..,?)+$/;
-
 var matcherClient = new MatcherClient();
 
 var notifiers;
@@ -524,9 +522,13 @@ function findWwffRef(spot, callback) {
 				spot.wwffName = park.name;
 				spot.wwffProgram = park.program;
 
-				// POTA: use US state from POTA park reference (override callsign home state)
-				if (potaLocationStateRegex.test(park.location)) {
-					spot.state = park.location.split(',').map(str => str.replace('-', '_'));
+				// POTA: override the callsign's home state only when this park is in
+				// exactly one US state or Canadian province.
+				if (park.program === 'pota') {
+					let state = hamutil.potaStateFromPark(park.location);
+					if (state) {
+						spot.state = state;
+					}
 				}
 			} else {
 				console.info(`WWFF reference ${wwffRef} not found in database`);

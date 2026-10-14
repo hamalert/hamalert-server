@@ -1,5 +1,24 @@
 const sprintf = require('sprintf-js').sprintf;
 
+// One US state or Canadian province, e.g. "US-NC" or "CA-ON".
+// A comma-separated list means the park crosses more than one.
+const potaSingleStateRegex = /^(US|CA)-([A-Z]{2})$/i;
+
+// State to store on a spot ("US_NC", "CA_ON") when a POTA park should replace the
+// callsign's home state. Null when the park is not in exactly one US/Canadian state.
+exports.potaStateFromPark = function(location) {
+	if (!location || typeof location !== 'string') {
+		return null;
+	}
+
+	let stateMatch = location.trim().match(potaSingleStateRegex);
+	if (!stateMatch) {
+		return null;
+	}
+
+	return stateMatch[1].toUpperCase() + '_' + stateMatch[2].toUpperCase();
+}
+
 exports.formatFrequency = function(frequency) {
 	if (frequency === undefined || frequency === null) {
 		return undefined;
