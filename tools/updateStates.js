@@ -1,6 +1,5 @@
-const MongoClient = require('mongodb').MongoClient;
+const {MongoClient} = require('mongodb');
 const config = require('../config_loader');
-const assert = require('assert');
 const { parse } = require('csv-parse');
 const fs = require('fs');
 const unzipper = require('unzipper');
@@ -13,19 +12,23 @@ let bulkOperations = [];
 
 // Run in parallel
 let client = new MongoClient(config.mongodb.url)
-client.connect((err) => {
-	assert.equal(null, err);
+client.connect().then(() => {
 	let db = client.db(config.mongodb.dbName);
 	
 	processFccDatabase(db);
+}).catch((err) => {
+	console.error(err);
+	process.exit(1);
 });
 
 let client2 = new MongoClient(config.mongodb.url)
-client2.connect((err) => {
-	assert.equal(null, err);
+client2.connect().then(() => {
 	let db = client2.db(config.mongodb.dbName);
 	
 	processCanadaDatabase(db);
+}).catch((err) => {
+	console.error(err);
+	process.exit(1);
 });
 
 function processFccDatabase(db) {
@@ -81,9 +84,10 @@ function processFccDatabase(db) {
 								return;
 							}
 							let myBulkOperations = fccOperations.splice(0, BULK_WRITE_SIZE);
-							db.collection('callsignInfo').bulkWrite(myBulkOperations, (err) => {
-								if (err)
-									console.error(err);
+							db.collection('callsignInfo').bulkWrite(myBulkOperations).then(() => {
+								writeBatch();
+							}).catch((err) => {
+								console.error(err);
 								writeBatch();
 							});
 						};
@@ -163,9 +167,10 @@ function flushBulkOperations(db, force, cb) {
 
 	let myBulkOperations = bulkOperations;
 	bulkOperations = [];
-	db.collection('callsignInfo').bulkWrite(myBulkOperations, (err, result) => {
-		if (err)
-			console.error(err);
+	db.collection('callsignInfo').bulkWrite(myBulkOperations).then(() => {
+		cb();
+	}).catch((err) => {
+		console.error(err);
 		cb(err);
 	});
 }

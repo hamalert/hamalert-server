@@ -1,23 +1,22 @@
-const MongoClient = require('mongodb').MongoClient;
+const {MongoClient} = require('mongodb');
 const config = require('../config_loader');
-const assert = require('assert');
 
 let client = new MongoClient(config.mongodb.url)
-client.connect((err) => {
-	assert.equal(null, err);
+client.connect().then(async () => {
 	let db = client.db(config.mongodb.dbName);
-	
-	makeTriggerStats(db, () => {
-		client.close();
-	});
+	await makeTriggerStats(db);
+	await client.close();
+}).catch((err) => {
+	console.error(err);
+	process.exit(1);
 });
 
-function makeTriggerStats(db, callback) {
+async function makeTriggerStats(db) {
 	let stats = {};
 	let numTriggers = 0;
 	let numConditions = 0;
 	let begin = process.hrtime();
-	db.collection('triggers').find({}).forEach((trigger) => {
+	await db.collection('triggers').find({}).forEach((trigger) => {
 		Object.keys(trigger.conditions).forEach((key) => {
 			if (!stats[key]) {
 				stats[key] = 1;
@@ -27,16 +26,14 @@ function makeTriggerStats(db, callback) {
 			numConditions++;
 		});
 		numTriggers++;
-	}, (err) => {
-		let diff = process.hrtime(begin);
-		console.log(`Fetch took ${(diff[0] * 1e9 + diff[1])/1e9} seconds`);
-		console.log(`${numTriggers} triggers, ${numConditions} conditions`);
-		
-		// make percent
-		Object.keys(stats).forEach((key) => {
-			let percent = Number(100 * stats[key] / numTriggers).toFixed(1);
-			console.log(`${key}: ${percent}%`);
-		});
-		callback();
+	});
+	let diff = process.hrtime(begin);
+	console.log(`Fetch took ${(diff[0] * 1e9 + diff[1])/1e9} seconds`);
+	console.log(`${numTriggers} triggers, ${numConditions} conditions`);
+
+	// make percent
+	Object.keys(stats).forEach((key) => {
+		let percent = Number(100 * stats[key] / numTriggers).toFixed(1);
+		console.log(`${key}: ${percent}%`);
 	});
 }

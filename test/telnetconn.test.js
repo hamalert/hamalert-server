@@ -31,8 +31,8 @@ function fakeDb(user) {
 	return {
 		collection() {
 			return {
-				findOne(query, callback) {
-					callback(null, user);
+				findOne() {
+					return Promise.resolve(user);
 				}
 			}
 		}

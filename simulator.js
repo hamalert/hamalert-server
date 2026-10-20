@@ -134,7 +134,7 @@ class SimulatorReceiver extends EventEmitter {
 		
 		if (req.body.summitRef) {
 			spot.summitRef = req.body.summitRef;
-			this.db.collection('summits').findOne({SummitCode: spot.summitRef}, {}, (err, summit) => {
+			const finishSummit = (summit) => {
 				spot.rawText += `, on ${spot.summitRef}`;
 				if (summit) {
 					spot.summitName = summit.SummitName;
@@ -156,6 +156,10 @@ class SimulatorReceiver extends EventEmitter {
 				
 				this.emit("spot", spot);
 				res.status(200).end();
+			};
+			this.db.collection('summits').findOne({SummitCode: spot.summitRef}).then(finishSummit).catch((err) => {
+				console.error(err);
+				finishSummit(null);
 			});
 		} else {
 			this.emit("spot", spot);

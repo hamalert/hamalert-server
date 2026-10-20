@@ -1,12 +1,10 @@
 const axios = require('axios');
 const https = require('https');
-const MongoClient = require('mongodb').MongoClient;
+const {MongoClient} = require('mongodb');
 const config = require('../config_loader');
-const assert = require('assert');
 
 let client = new MongoClient(config.mongodb.url)
-client.connect(async (err) => {
-	assert.equal(null, err);
+client.connect().then(async () => {
 	let db = client.db(config.mongodb.dbName);
 	
 	// Grab list of all DXCC IDs first
@@ -18,6 +16,9 @@ client.connect(async (err) => {
 	await updateBandslots(db, dxccIds);
 
 	client.close();
+}).catch((err) => {
+	console.error(err);
+	process.exit(1);
 });
 
 async function updateBandslots(db, dxccIds) {

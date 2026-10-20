@@ -1,7 +1,6 @@
-const MongoClient = require('mongodb').MongoClient;
+const {MongoClient} = require('mongodb');
 const exitHook = require('async-exit-hook');
 const config = require('./config_loader');
-const assert = require('assert');
 
 class StatsUpdater {
 	constructor() {
@@ -10,9 +9,11 @@ class StatsUpdater {
 		this.lastDbFlush = new Date();
 		
 		let client = new MongoClient(config.mongodb.url)
-		client.connect((err) => {
-			assert.equal(null, err);
+		client.connect().then(() => {
 			this.db = client.db(config.mongodb.dbName);
+		}).catch((err) => {
+			console.error(err);
+			process.exit(1);
 		});
 		
 		exitHook((callback) => {
@@ -58,10 +59,11 @@ class StatsUpdater {
 			if (Object.keys(inc).length === 0)
 				return;
 			
-			this.db.collection('stats').updateOne({date: dmy}, {$inc: inc}, {upsert: true}, (err, result) => {
-				if (err)
-					console.error(`Stats update failed: ${err}`);
-				
+			this.db.collection('stats').updateOne({date: dmy}, {$inc: inc}, {upsert: true}).then(() => {
+				if (callback)
+					callback();
+			}).catch((err) => {
+				console.error(`Stats update failed: ${err}`);
 				if (callback)
 					callback(err);
 			});

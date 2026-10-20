@@ -20,7 +20,7 @@
     "ioredis": "^5.6.1",
     "lru-cache": "^4.1.5",
     "moment": "^2.29.1",
-    "mongodb": "^4.17.2",
+    "mongodb": "^7.7.0",
     "ndjson": "^1.5.0",
     "nodemailer": "^10.0.15",
     "pm2": "^7.0.4",
@@ -41,5 +41,8 @@
     "dstar-nodes": "node tools/dstarNodeTest.js"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "engines": {
+    "node": ">=24"
+  }
 }

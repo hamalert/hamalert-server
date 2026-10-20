@@ -19,10 +19,8 @@ const StatsUpdater = require('./stats');
 const ModeGuesser = require('./modeguesser');
 const MatcherClient = require('./matcher_client');
 const hamutil = require('./hamutil');
-const MongoClient = require('mongodb').MongoClient;
-const ObjectID = require('mongodb').ObjectID;
+const {MongoClient, ObjectId} = require('mongodb');
 const Redis = require('ioredis');
-const assert = require('assert');
 const clone = require('clone');
 const async = require('async');
 const TTLCache = require('@isaacs/ttlcache');
@@ -49,8 +47,7 @@ let userCache = new TTLCache({ttl: config.userCache.maxAge});
 console.log(`Environment is ${process.env.NODE_ENV}`);
 
 let client = new MongoClient(config.mongodb.url)
-client.connect((err) => {
-	assert.equal(null, err);
+client.connect().then(() => {
 	db = client.db(config.mongodb.dbName);
 	clubLogResolver = new ClubLogResolver(db);
 	statsUpdater = new StatsUpdater();
@@ -71,6 +68,9 @@ client.connect((err) => {
 	if (config.testOnly) {
 		console.log("*** TEST MODE, NO ALERTS WILL BE SENT ***");
 	}
+}).catch((err) => {
+	console.error(err);
+	process.exit(1);
 });
 
 const redis = new Redis(config.redis.server);
@@ -242,7 +242,7 @@ function processMatcherResult(result, spot) {
 	// Look up user in cache, or in DB if not found
 	result.user = userCache.get(result.user_id);
 	if (!result.user) {
-		db.collection('users').findOne({_id: ObjectID(result.user_id)}, {}, (err, user) => {
+		db.collection('users').findOne({_id: new ObjectId(result.user_id)}).then((user) => {
 			if (user) {
 				result.user = user;
 				userCache.set(result.user_id, user);
@@ -250,6 +250,8 @@ function processMatcherResult(result, spot) {
 			} else {
 				console.error(`Could not find user ID ${result.user_id}`);
 			}
+		}).catch((err) => {
+			console.error(`Could not find user ID ${result.user_id}: ${err}`);
 		});
 	} else {
 		runNotifiers(result, spot);
@@ -290,8 +292,14 @@ function runNotifiers(trigger, spot) {
 					{"$or": [{"band": spot.band}, {"band": null}]},
 					{"$or": [{"mode": spot.mode}, {"mode": null}]},
 					{"$or": [{"summitRef": spot.summitRef}, {"summitRef": null}]}
-				]}, {}, (err, mute) => {
-			
+				]}).then((mute) => {
+				deliverUnlessMuted(mute);
+			}).catch((err) => {
+				console.error(err);
+				deliverUnlessMuted(null);
+			});
+
+			function deliverUnlessMuted(mute) {
 				if (mute)
 					return;
 				for (let action of trigger.actions) {
@@ -303,7 +311,7 @@ function runNotifiers(trigger, spot) {
 						console.log("No notifier for '" + action + "'");
 					}
 				}
-			});
+			}
 		}
 	}
 }
@@ -314,7 +322,7 @@ function saveSpot(trigger, spot) {
 	dbSpot.user_id = trigger.user._id;
 	dbSpot.actions = trigger.actions;
 	dbSpot.triggerComment = trigger.comment;
-	db.collection('spots').insertOne(dbSpot);
+	db.collection('spots').insertOne(dbSpot).catch((err) => console.error(err));
 
 	// Publish in Redis Stream
 	let redisSpot = hamutil.makeSpotParams(spot, trigger.comment, trigger.actions);
@@ -328,7 +336,7 @@ function saveSpot(trigger, spot) {
 }
 
 function saveMySpot(spot) {
-	db.collection('myspots').replaceOne({callsign: spot.callsign}, spot, {upsert: true});
+	db.collection('myspots').replaceOne({callsign: spot.callsign}, spot, {upsert: true}).catch((err) => console.error(err));
 }
 
 function normalizeSpot(spot, callback) {
@@ -476,7 +484,7 @@ function findSotaRef(spot, callback) {
 	if (matches) {
 		// Look up summit ref in database to be sure
 		let summitRef = matches[1].toUpperCase() + '-' + matches[2];
-		db.collection('summits').findOne({SummitCode: summitRef}, {}, (err, summit) => {			
+		db.collection('summits').findOne({SummitCode: summitRef}).then((summit) => {
 			if (summit) {
 				spot.summitRef = summitRef;
 				spot.summitName = summit.SummitName;
@@ -486,7 +494,9 @@ function findSotaRef(spot, callback) {
 			} else {
 				console.info(`Summit ${summitRef} not found in database`);
 			}
-	
+		}).catch((err) => {
+			console.error(err);
+		}).then(() => {
 			callback();
 		});
 	} else {
@@ -515,7 +525,7 @@ function findWwffRef(spot, callback) {
 		let wwffRef = wwffDivision + "-" + wwffNum;
 		
 		// Check for active reference in database
-		db.collection('wwffParks').findOne({reference: wwffRef, status: 'active'}, {}, (err, park) => {
+		db.collection('wwffParks').findOne({reference: wwffRef, status: 'active'}).then((park) => {
 			if (park) {
 				spot.wwffDivision = wwffDivision;
 				spot.wwffRef = wwffRef;
@@ -533,7 +543,9 @@ function findWwffRef(spot, callback) {
 			} else {
 				console.info(`WWFF reference ${wwffRef} not found in database`);
 			}
-			
+		}).catch((err) => {
+			console.error(err);
+		}).then(() => {
 			callback();
 		});
 	} else {
@@ -557,14 +569,16 @@ function findIotaGroupRef(spot, callback) {
 		let iotaGroupRef = iotaContinent + "-" + iotaNum;
 		
 		// Check for active reference in database
-		db.collection('iotaGroups').findOne({grpRef: iotaGroupRef}, {}, (err, iotaGroup) => {
+		db.collection('iotaGroups').findOne({grpRef: iotaGroupRef}).then((iotaGroup) => {
 			if (iotaGroup) {
 				spot.iotaGroupRef = iotaGroup.grpRef;
 				spot.iotaGroupName = iotaGroup.grpName;
 			} else {
 				console.info(`IOTA group reference ${iotaGroupRef} not found in database`);
 			}
-			
+		}).catch((err) => {
+			console.error(err);
+		}).then(() => {
 			callback();
 		});
 	} else {
@@ -573,7 +587,7 @@ function findIotaGroupRef(spot, callback) {
 }
 
 function findCallsignInfo(spot, callback) {
-	db.collection('callsignInfo').findOne({callsign: spot.fullCallsign}, {}, (err, callsignInfo) => {
+	db.collection('callsignInfo').findOne({callsign: spot.fullCallsign}).then((callsignInfo) => {
 		if (callsignInfo) {
 			if (callsignInfo.state && !spot.state) {
 				spot.state = callsignInfo.state;
@@ -591,15 +605,16 @@ function findCallsignInfo(spot, callback) {
 			// Strip some common non-location-modifying suffixes for callsign lookup
 			let cleanSpotterCallsign = spot.spotter.replace(/\/(QRP|SDR)$/i, '');
 
-			db.collection('callsignInfo').findOne({callsign: cleanSpotterCallsign}, {}, (err, spotterCallsignInfo) => {
+			return db.collection('callsignInfo').findOne({callsign: cleanSpotterCallsign}).then((spotterCallsignInfo) => {
 				if (spotterCallsignInfo && spotterCallsignInfo.state) {
 					spot.spotterState = spotterCallsignInfo.state;
 				}
-				callback();
 			});
-		} else {
-			callback();
 		}
+	}).catch((err) => {
+		console.error(err);
+	}).then(() => {
+		callback();
 	});
 }
 

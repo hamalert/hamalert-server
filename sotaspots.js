@@ -112,7 +112,7 @@ class SotaSpotReceiver extends EventEmitter {
 			}
 			
 			// Look up summit ref in database and insert summit name in raw text
-			this.db.collection('summits').findOne({SummitCode: spot.summitRef}, {}, (err, summit) => {
+			const finishSummit = (summit) => {
 				spot.rawText = `${spot.time} ${spot.fullCallsign} on ${spot.summitRef}`;
 				
 				if (summit) {
@@ -151,6 +151,10 @@ class SotaSpotReceiver extends EventEmitter {
 				this.emit("spot", spot);
 			
 				this.idCache.set(jsonSpot.id, digest);
+			};
+			this.db.collection('summits').findOne({SummitCode: spot.summitRef}).then(finishSummit).catch((err) => {
+				console.error(err);
+				finishSummit(null);
 			});
 		} catch (e) {
 			console.error("Exception while processing SOTA spot", e);

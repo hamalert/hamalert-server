@@ -7,11 +7,13 @@ const fs = require('fs');
 const moment = require('moment');
 
 let client = new MongoClient(config.mongodb.url)
-client.connect((err) => {
-	assert.equal(null, err);
+client.connect().then(() => {
 	let db = client.db(config.mongodb.dbName);
 	
 	processLotwUserList(db);
+}).catch((err) => {
+	console.error(err);
+	process.exit(1);
 });
 
 function processLotwUserList(db) {	
@@ -39,12 +41,14 @@ function processLotwUserList(db) {
 						}
 					});
 				}
-				db.collection('callsignInfo').updateMany({lotw: true}, {$set: {lotw: false}}, (err, result) => {
-					db.collection('callsignInfo').bulkWrite(bulkOperations, (err, result) => {
-						if (err)
-							console.error(err);
-						client.close();
-					});
+				db.collection('callsignInfo').updateMany({lotw: true}, {$set: {lotw: false}}).catch((err) => {
+					console.error(err);
+				}).then(() => {
+					return db.collection('callsignInfo').bulkWrite(bulkOperations);
+				}).catch((err) => {
+					console.error(err);
+				}).finally(() => {
+					client.close();
 				});
 			});
 		})

@@ -1,11 +1,11 @@
-const MongoClient = require('mongodb').MongoClient;
+const {MongoClient} = require('mongodb');
 const nodemailer = require('nodemailer');
-const assert = require('assert');
 const config = require('../config_loader');
 const async = require('async');
 
-let client = MongoClient.connect(config.mongodb.url, async function (err, db) {
-	assert.equal(null, err);
+let client = new MongoClient(config.mongodb.url);
+client.connect().then(async () => {
+	let db = client.db(config.mongodb.dbName);
 	
 	let transporter = nodemailer.createTransport(config.mail.transport);
 
@@ -37,22 +37,25 @@ Manuel HB9DQM
 
 			console.log(user.accountEmail);
 			
-			transporter.sendMail(mail, function (err, info) {
+			transporter.sendMail(mail, async function (err, info) {
 				if (err) {
 					console.error(err);
 					callback(err);
 				} else {
-					db.collection('users').updateOne({_id: user._id}, {$set: {emailInfoSent: true}}, (err, r) => {
-						assert.equal(null, err);
-						callback(null, callback);
-					});
+					try {
+						await db.collection('users').updateOne({_id: user._id}, {$set: {emailInfoSent: true}});
+						callback(null);
+					} catch (updateErr) {
+						console.error(updateErr);
+						callback(updateErr);
+					}
 				}
 			});
 		}
 	})
 
 	async.series(emailTasks, () => {
-		db.close();
+		client.close();
 	});	
 
 	/*(async (err, user) => {
@@ -66,4 +69,7 @@ Manuel HB9DQM
 
 		await new Promise(resolve => setTimeout(resolve, 100));
 	});*/
+}).catch((err) => {
+	console.error(err);
+	process.exit(1);
 });

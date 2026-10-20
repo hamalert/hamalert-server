@@ -7,11 +7,13 @@ const fs = require('fs');
 const async = require('async');
 
 let client = new MongoClient(config.mongodb.url)
-client.connect((err) => {
-	assert.equal(null, err);
+client.connect().then(() => {
 	let db = client.db(config.mongodb.dbName);
 	
 	processParksList(db);
+}).catch((err) => {
+	console.error(err);
+	process.exit(1);
 });
 
 function processParksList(db) {

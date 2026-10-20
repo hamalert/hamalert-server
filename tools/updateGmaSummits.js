@@ -10,11 +10,13 @@ console.error('Disabled (WIP)');
 process.exit();
 
 let client = new MongoClient(config.mongodb.url)
-client.connect((err) => {
-	assert.equal(null, err);
+client.connect().then(() => {
 	let db = client.db(config.mongodb.dbName);
 	
 	processSummitList(db);
+}).catch((err) => {
+	console.error(err);
+	process.exit(1);
 });
 
 function processSummitList(db) {
@@ -40,11 +42,14 @@ function processSummitList(db) {
 		
 		cb => {
 			// Obtain current list of GMA associations so we can retain the names
-			db.collection('associations').find({Program: 'gma'}).toArray((err, oldDbAssociations) => {
+			db.collection('associations').find({Program: 'gma'}).toArray().then((oldDbAssociations) => {
 				for (let assoc of oldDbAssociations) {
 					oldAssociationNames.set(assoc['Association'], assoc['Name']);
 				}
 				cb();
+			}).catch((err) => {
+				console.error(err);
+				cb(err);
 			});
 		},
 		
@@ -118,20 +123,30 @@ function processSummitList(db) {
 		
 				var collection = db.collection('summits');
 				var associationCollection = db.collection('associations');
-				collection.deleteMany({Program: 'gma'}, () => {
-					collection.insertMany(summits, (err, r) => {
-						if (err)
-							console.error(err);
-				
-						associationCollection.deleteMany({Program: 'gma'}, () => {
-							associationCollection.insertMany([...associations.values()], (err, r) => {
-								if (err)
-									console.error(err);
-								client.close();
-								cb();
-							});
-						});
-					});
+				(async () => {
+					try {
+						await collection.deleteMany({Program: 'gma'});
+					} catch (err) {
+						console.error(err);
+					}
+					try {
+						await collection.insertMany(summits);
+					} catch (err) {
+						console.error(err);
+					}
+					try {
+						await associationCollection.deleteMany({Program: 'gma'});
+					} catch (err) {
+						console.error(err);
+					}
+					try {
+						await associationCollection.insertMany([...associations.values()]);
+					} catch (err) {
+						console.error(err);
+					}
+				})().finally(() => {
+					client.close();
+					cb();
 				});
 			});
 		}

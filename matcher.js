@@ -31,14 +31,16 @@ let db;
 let reloading = false;
 let reloadCallbackQueue = [];
 let client = new MongoClient(config.mongodb.url)
-client.connect((err) => {
-	assert.equal(null, err);
+client.connect().then(() => {
 	db = client.db(config.mongodb.dbName);
 	
 	reloadTriggers(numTriggers => {
 		startServer();
 		setInterval(reloadTriggers, config.matcher.reloadInterval);
 	});
+}).catch((err) => {
+	console.error(err);
+	process.exit(1);
 });
 
 function startServer() {
@@ -375,10 +377,10 @@ function reloadTriggers(callback) {
 					actions: ['myspot'],
 					conditions: {callsign: user.username}
 				});
-			}, callback);
+			}).then(() => callback(), callback);
 		},
 		callback => {
-			db.collection('triggers').find({}).forEach(addTrigger, callback);
+			db.collection('triggers').find({}).forEach(addTrigger).then(() => callback(), callback);
 		}
 	], err => {
 		assert.equal(null, err);

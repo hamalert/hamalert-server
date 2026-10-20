@@ -102,42 +102,44 @@ class TelnetConnection extends EventEmitter {
 		}
 	}
 
-	doLogin() {
-		this.db.collection('users').findOne({username: this.username}, (err, user) => {
-			if (err) {
-				this.socket.write("Database error\r\n");
-				this.socket.destroy();
-				return;
-			}
+	async doLogin() {
+		let user;
+		try {
+			user = await this.db.collection('users').findOne({username: this.username});
+		} catch (err) {
+			console.error(err);
+			this.socket.write("Database error\r\n");
+			this.socket.destroy();
+			return;
+		}
 
-			if (!user) {
-				this.socket.write("Login failed, check username and password\r\n");
-				this.socket.destroy();
-				return;
-			}
+		if (!user) {
+			this.socket.write("Login failed, check username and password\r\n");
+			this.socket.destroy();
+			return;
+		}
 
-			this.user = user;
+		this.user = user;
 
-			if (user.telnetPassword && this.password === user.telnetPassword) {
-				this.finalizeLogin();
-			} else {
-				bcrypt.compare(this.password, user.password, (err, res) => {
-					// bcryptjs reports a missing or non-string hash, and some
-					// malformed 60-character hashes, via err with res undefined.
-					// Anything other than an explicit match is a failed login.
-					if (err || res !== true) {
-						if (err) {
-							console.error(`Telnet login failed for ${this.username}: ${err.message}`);
-						}
-						this.socket.write("Login failed, check username and password\r\n");
-						this.socket.destroy();
-						return;
+		if (user.telnetPassword && this.password === user.telnetPassword) {
+			this.finalizeLogin();
+		} else {
+			bcrypt.compare(this.password, user.password, (err, res) => {
+				// bcryptjs reports a missing or non-string hash, and some
+				// malformed 60-character hashes, via err with res undefined.
+				// Anything other than an explicit match is a failed login.
+				if (err || res !== true) {
+					if (err) {
+						console.error(`Telnet login failed for ${this.username}: ${err.message}`);
 					}
+					this.socket.write("Login failed, check username and password\r\n");
+					this.socket.destroy();
+					return;
+				}
 
-					this.finalizeLogin();
-				});
-			}
-		});
+				this.finalizeLogin();
+			});
+		}
 	}
 
 	finalizeLogin() {

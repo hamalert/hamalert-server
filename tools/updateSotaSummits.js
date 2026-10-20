@@ -5,11 +5,13 @@ const assert = require('assert');
 const { parse } = require('csv-parse');
 
 let client = new MongoClient(config.mongodb.url)
-client.connect((err) => {
-	assert.equal(null, err);
+client.connect().then(() => {
 	let db = client.db(config.mongodb.dbName);
 	
 	processSummitList(db);
+}).catch((err) => {
+	console.error(err);
+	process.exit(1);
 });
 
 function processSummitList(db) {
@@ -49,18 +51,29 @@ function processSummitList(db) {
 				}
 				var collection = db.collection('summits');
 				var associationCollection = db.collection('associations');
-				collection.deleteMany({Program: 'sota'}, () => {
-					collection.insertMany(summits, (err, r) => {
-						if (err)
-							console.error(err);
-						associationCollection.deleteMany({Program: 'sota'}, () => {
-							associationCollection.insertMany([...associations.values()], (err, r) => {
-								if (err)
-									console.error(err);
-								client.close();
-							});
-						});
-					});
+				(async () => {
+					try {
+						await collection.deleteMany({Program: 'sota'});
+					} catch (err) {
+						console.error(err);
+					}
+					try {
+						await collection.insertMany(summits);
+					} catch (err) {
+						console.error(err);
+					}
+					try {
+						await associationCollection.deleteMany({Program: 'sota'});
+					} catch (err) {
+						console.error(err);
+					}
+					try {
+						await associationCollection.insertMany([...associations.values()]);
+					} catch (err) {
+						console.error(err);
+					}
+				})().finally(() => {
+					client.close();
 				});
 			});
 		})

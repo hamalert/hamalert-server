@@ -10,7 +10,7 @@ the web app is started too.
 ## Prerequisites
 
 - Docker (daemon running; `docker info` should succeed). Podman with the `podman-docker` shim works too.
-- Node.js 22
+- Node.js 24
 - Optionally, a `hamalert-web` checkout next to this repo (`../hamalert-web`) if you want the
   web UI — see `HAMALERT_WEB_DIR` below if it lives somewhere else.
 

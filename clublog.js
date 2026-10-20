@@ -91,12 +91,7 @@ class ClubLogResolver {
 					this.cache.set(callsign, null);
 					return doCallback(null);
 				}
-				this.db.collection('dxccs').findOne({dxcc: clublogResponse.DXCC}, {fields: {_id: 0}}, (err, dxcc) => {
-					if (err) {
-						console.error(`DXCC DB lookup failed: ${err}`);
-						return doCallback(null);
-					}
-					
+				this.db.collection('dxccs').findOne({dxcc: clublogResponse.DXCC}, {projection: {_id: 0}}).then((dxcc) => {
 					if (!dxcc) {
 						console.error(`DXCC ${clublogResponse.DXCC} not found in DB`);
 						this.cache.set(callsign, null);
@@ -114,6 +109,9 @@ class ClubLogResolver {
 					this.cache.set(callsign, dxcc);
 					
 					doCallback(dxcc);
+				}).catch((err) => {
+					console.error(`DXCC DB lookup failed: ${err}`);
+					doCallback(null);
 				});
 			} catch (e) {
 				console.error(e);

@@ -1,11 +1,8 @@
-const MongoClient = require('mongodb').MongoClient
-const ObjectID = require('mongodb').ObjectID
-const assert = require('assert')
+const {MongoClient, ObjectId} = require('mongodb')
 const config = require('../config_loader')
 
 let client = new MongoClient(config.mongodb.url)
-client.connect(async (err) => {
-	assert.equal(null, err)
+client.connect().then(async () => {
 	let db = client.db(config.mongodb.dbName)
 
 	let cursor = db.collection('triggers').find({matchCount: {"$gt": config.uselessTriggerDetection.matchThreshold}, disabled: {$in: [null, false]}})
@@ -15,7 +12,7 @@ client.connect(async (err) => {
 			continue
 		}
 
-		await db.collection('triggers').updateOne({_id: ObjectID(trigger._id)}, {$set: {disabled: true, useless: true}})
+		await db.collection('triggers').updateOne({_id: new ObjectId(trigger._id)}, {$set: {disabled: true, useless: true}})
 	}
 
 	if (process.argv[2] === '--reset') {
@@ -23,4 +20,7 @@ client.connect(async (err) => {
 	}
 
 	client.close()
+}).catch((err) => {
+	console.error(err)
+	process.exit(1)
 })

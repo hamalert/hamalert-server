@@ -1,7 +1,7 @@
 const exitHook = require('async-exit-hook');
 const fs = require('fs');
 const config = require('./config_loader');
-const ObjectID = require('mongodb').ObjectID;
+const {ObjectId} = require('mongodb');
 
 class MatchLogger {
 	constructor(db) {
@@ -30,7 +30,7 @@ class MatchLogger {
 
 	_updateDatabase() {
 		this.matchCountPerTriggerId.forEach((matchCount, triggerId) => {
-			this.db.collection('triggers').updateOne({_id: ObjectID(triggerId)}, {$inc: {matchCount: matchCount}});
+			this.db.collection('triggers').updateOne({_id: new ObjectId(triggerId)}, {$inc: {matchCount: matchCount}}).catch((err) => console.error(err));
 		});
 		this.matchCountPerTriggerId = new Map();
 	}

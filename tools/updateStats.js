@@ -1,13 +1,13 @@
-const MongoClient = require('mongodb').MongoClient;
+const {MongoClient} = require('mongodb');
 const config = require('../config_loader');
-const assert = require('assert');
 
 let client = new MongoClient(config.mongodb.url)
-client.connect((err) => {
-	assert.equal(null, err);
+client.connect().then(async () => {
 	let db = client.db(config.mongodb.dbName);
-	
-	updateStats(db);
+	await updateStats(db);
+}).catch((err) => {
+	console.error(err);
+	process.exit(1);
 });
 
 async function updateStats(db) {
@@ -16,8 +16,8 @@ async function updateStats(db) {
 	yesterday.setDate(yesterday.getDate()-1);
 	yesterday = yesterday.toISOString().slice(0, 10);
 	
-	let numTriggers = await db.collection('triggers').count({});
-	let numUsers = await db.collection('users').count({});
+	let numTriggers = await db.collection('triggers').countDocuments({});
+	let numUsers = await db.collection('users').countDocuments({});
 	await db.collection('stats').updateOne({date: yesterday}, {$set: {triggers: numTriggers, users: numUsers}}, {upsert: true});
 	client.close();
 }

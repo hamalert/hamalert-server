@@ -1,7 +1,7 @@
 const exitHook = require('async-exit-hook');
 const fs = require('fs');
 const config = require('./config_loader');
-const ObjectID = require('mongodb').ObjectID;
+const {ObjectId} = require('mongodb');
 
 class LimitLogger {
 	constructor(db) {
@@ -26,7 +26,7 @@ class LimitLogger {
 
 	_updateDatabase() {
 		this.exceededCountPerUserId.forEach((exceededCount, userId) => {
-			this.db.collection('users').updateOne({_id: ObjectID(userId)}, {$inc: {limitExceededCount: exceededCount}});
+			this.db.collection('users').updateOne({_id: new ObjectId(userId)}, {$inc: {limitExceededCount: exceededCount}}).catch((err) => console.error(err));
 		});
 		this.exceededCountPerUserId = new Map();
 	}

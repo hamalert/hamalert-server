@@ -1,14 +1,15 @@
-const MongoClient = require('mongodb').MongoClient;
+const {MongoClient} = require('mongodb');
 const config = require('../config_loader');
-const assert = require('assert');
 const fs = require('fs');
 
 let client = new MongoClient(config.mongodb.url)
-client.connect((err) => {
-	assert.equal(null, err);
+client.connect().then(() => {
 	let db = client.db(config.mongodb.dbName);
 	
 	processDxccList(db);
+}).catch((err) => {
+	console.error(err);
+	process.exit(1);
 });
 
 // input file format (tab delimited):

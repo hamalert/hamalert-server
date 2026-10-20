@@ -1,11 +1,9 @@
-const MongoClient = require('mongodb').MongoClient;
+const {MongoClient} = require('mongodb');
 const nodemailer = require('nodemailer');
-const assert = require('assert');
 const config = require('../config_loader');
 
 let client = new MongoClient(config.mongodb.url)
-client.connect(async (err) => {
-	assert.equal(null, err);
+client.connect().then(async () => {
 	let db = client.db(config.mongodb.dbName);
 	
 	let transporter = nodemailer.createTransport(config.mail.transport);
@@ -39,4 +37,7 @@ The HamAlert team
 	};
 
 	client.close();
+}).catch((err) => {
+	console.error(err);
+	process.exit(1);
 });

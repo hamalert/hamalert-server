@@ -1,15 +1,16 @@
 const axios = require('axios');
 const MongoClient = require('mongodb').MongoClient;
 const config = require('../config_loader');
-const assert = require('assert');
 const fs = require('fs');
 
 let client = new MongoClient(config.mongodb.url)
-client.connect((err) => {
-	assert.equal(null, err);
+client.connect().then(() => {
 	let db = client.db(config.mongodb.dbName);
 	
 	processEqslUserList(db);
+}).catch((err) => {
+	console.error(err);
+	process.exit(1);
 });
 
 function processEqslUserList(db) {	
@@ -37,12 +38,14 @@ function processEqslUserList(db) {
 					}
 				});
 			}
-			db.collection('callsignInfo').updateMany({eqsl: true}, {$set: {eqsl: false}}, (err, result) => {
-				db.collection('callsignInfo').bulkWrite(bulkOperations, (err, result) => {
-					if (err)
-						console.error(err);
-					client.close();
-				});
+			db.collection('callsignInfo').updateMany({eqsl: true}, {$set: {eqsl: false}}).catch((err) => {
+				console.error(err);
+			}).then(() => {
+				return db.collection('callsignInfo').bulkWrite(bulkOperations);
+			}).catch((err) => {
+				console.error(err);
+			}).finally(() => {
+				client.close();
 			});
 		})
 		.catch(error => {

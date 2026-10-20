@@ -1,15 +1,16 @@
 const axios = require('axios');
-const MongoClient = require('mongodb').MongoClient;
+const {MongoClient} = require('mongodb');
 const config = require('../config_loader');
-const assert = require('assert');
 
 let client = new MongoClient(config.mongodb.url)
-client.connect(async (err) => {
-	assert.equal(null, err);
+client.connect().then(async () => {
 	let db = client.db(config.mongodb.dbName);
 	
 	await processIotaList(db);
 	client.close();
+}).catch((err) => {
+	console.error(err);
+	process.exit(1);
 });
 
 async function processIotaList(db) {
