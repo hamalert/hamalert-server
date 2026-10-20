@@ -4,7 +4,7 @@ const EventEmitter = require('events');
 const axios = require('axios');
 const ndjson = require('ndjson');
 const sprintf = require('sprintf-js').sprintf;
-const TTLCache = require('@isaacs/ttlcache');
+const {TTLCache} = require('@isaacs/ttlcache');
 const https = require('https');
 
 class PskReporterReceiver extends EventEmitter {

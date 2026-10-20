@@ -2,7 +2,7 @@ const config = require('./config_loader');
 const reconnect = require('reconnect-net');
 const carrier = require('carrier');
 const hamutil = require('./hamutil');
-const TTLCache = require('@isaacs/ttlcache');
+const {TTLCache} = require('@isaacs/ttlcache');
 const EventEmitter = require('events');
 
 const rbnSpotRegex = /^DX de (\S+):\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+dB\s+(?:(\S+)\s+WPM)?.*(?:CQ|DX)\s+(\d+)Z$/;

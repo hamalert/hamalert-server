@@ -4,7 +4,7 @@
   "description": "",
   "main": "server.js",
   "dependencies": {
-    "@isaacs/ttlcache": "^1.4.1",
+    "@isaacs/ttlcache": "^2.1.5",
     "@parse/node-apn": "^8.1.0",
     "async": "^2.6.3",
     "async-exit-hook": "^1.1.2",
