@@ -5,6 +5,7 @@ const readline = require('readline');
 const bcrypt = require('bcryptjs');
 const EventEmitter = require('events');
 const sprintf = require('sprintf-js').sprintf;
+const moment = require('moment');
 
 class TelnetConnection extends EventEmitter {
 	constructor(socket, db) {
@@ -16,8 +17,13 @@ class TelnetConnection extends EventEmitter {
 		this.clusterMode = 'classic';
 		this.pendingLines = [];
 
-		this.socket.setKeepAlive(true, 60000);
-		
+
+		// Application-layer keepalive: TCP keepalives don't work with all clients
+		// so resend the cluster prompt if we've had nothing to send for the past
+		// config.telnetsrv.keepAliveInterval, to keep the client from disconnecting
+		// an idle link. Disabled when the setting is absent or <= 0.
+		this.keepAliveTimeout = null;
+
 		this.socket.on('error', () => {
 			this.socket.destroy();
 			if (this.state == 'loggedin') {
@@ -40,6 +46,10 @@ class TelnetConnection extends EventEmitter {
 			}
 		})
 		this.socket.on('close', () => {
+			if (this.keepAliveTimeout) {
+				clearTimeout(this.keepAliveTimeout);
+				this.keepAliveTimeout = null;
+			}
 			if (this.state == 'loggedin') {
 				this.emit('logout', this.username);
 				this.state = 'loggedout';
@@ -144,13 +154,40 @@ class TelnetConnection extends EventEmitter {
 
 	finalizeLogin() {
 		this.socket.write("Hello " + this.username + ", this is HamAlert\r\n");
-		this.socket.write(this.username + " de HamAlert >\r\n");
+		this.writePrompt();
 		this.state = 'loggedin';
 		this.emit('login', this.username);
+		this.resetKeepAlive();
 
 		for (let line of this.pendingLines) {
 			this.handleLine(line);
 		}
+	}
+
+	writePrompt() {
+		let now = moment.utc();
+		this.socket.write(this.username + " de HamAlert " + now.format('DD-MM-YYYY') + " " + now.format('HHmm') + ">\r\n");
+	}
+
+	resetKeepAlive() {
+		if (this.keepAliveTimeout) {
+			clearTimeout(this.keepAliveTimeout);
+			this.keepAliveTimeout = null;
+		}
+		// No default: if keepAliveInterval is not configured, the keepalive is disabled
+		const interval = config.telnetsrv.keepAliveInterval;
+		if (!interval || interval <= 0) {
+			return;
+		}
+		this.keepAliveTimeout = setTimeout(() => {
+			this.keepAliveTimeout = null;
+			if (this.state != 'loggedin') {
+				return;
+			}
+			this.writePrompt();
+			this.resetKeepAlive();
+		}, interval);
+		this.keepAliveTimeout.unref();
 	}
 
 	notify(spot, triggerComment) {
@@ -217,8 +254,9 @@ class TelnetConnection extends EventEmitter {
 			line = sprintf("DX de %s  %-12s %-30s %sZ\r\n",
 				spotterFreq, spot.fullCallsign.substring(0, 12), comment.substring(0, 30), spot.time.replace(':', ''));
 		}
-		
+
 		this.socket.write(line);
+		this.resetKeepAlive();
 	}
 }
 

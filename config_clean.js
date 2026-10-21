@@ -501,7 +501,8 @@ config.state = {
 };
 
 config.telnetsrv = {
-	port: 7300
+	port: 7300,
+	keepAliveInterval: 4*60*1000	// resend the cluster prompt on an idle logged-in connection after this many ms (0 = disable)
 };
 
 module.exports = config;
