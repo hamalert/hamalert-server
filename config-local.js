@@ -272,6 +272,34 @@ config.crashNotifyMail = {
 	to: 'nobody@hamalert.invalid'
 };
 
+// Spot-feed watchdog (tools/spotWatchdog.js). interval is how long that source
+// may go without a processed spot before an alert is sent to notifyMail.
+config.watchdog = {
+	notifyMail: {
+		transport: {
+			host: 'localhost',
+			port: 25,
+			auth: {
+				user: "local-dev-placeholder",
+				pass: "local-dev-placeholder"
+			}
+		},
+		from: 'watchdog@hamalert.invalid',
+		to: 'nobody@hamalert.invalid'
+	},
+	sources: [
+		{source: 'cluster', interval: 15*60*1000},
+		{source: 'rbn', interval: 15*60*1000},
+		{source: 'pskreporter', interval: 15*60*1000},
+		{source: 'sotawatch', interval: 8*60*60*1000},
+		{source: 'pota', interval: 8*60*60*1000},
+		{source: 'wwff', interval: 8*60*60*1000},
+		{source: 'dstarusers', interval: 4*60*60*1000},
+		{source: 'quadnet', interval: 4*60*60*1000},
+		{source: 'ircddb', interval: 4*60*60*1000}
+	]
+};
+
 config.userCache = {
 	maxAge: 60000
 };

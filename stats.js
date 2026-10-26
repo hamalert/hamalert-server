@@ -6,6 +6,9 @@ class StatsUpdater {
 	constructor() {
 		this.spots = {};
 		this.alerts = {};
+		// Last time a spot from each source was processed. Flushed with the counters
+		// so tools/spotWatchdog.js can alert when a monitored source goes quiet.
+		this.lastSeen = {};
 		this.lastDbFlush = new Date();
 		
 		let client = new MongoClient(config.mongodb.url)
@@ -26,6 +29,7 @@ class StatsUpdater {
 			this.spots[source]++;
 		else
 			this.spots[source] = 1;
+		this.lastSeen[source] = new Date();
 		this.flushToDb(false);
 	}
 	
@@ -51,15 +55,28 @@ class StatsUpdater {
 			Object.keys(this.alerts).forEach(key => {
 				inc['alerts.' + key] = this.alerts[key];
 			});
-			
+			let lastSeen = this.lastSeen;
+
 			this.spots = {};
 			this.alerts = {};
+			this.lastSeen = {};
 			this.lastDbFlush = now;
 			
 			if (Object.keys(inc).length === 0)
 				return;
-			
-			this.db.collection('stats').updateOne({date: dmy}, {$inc: inc}, {upsert: true}).then(() => {
+
+			let writes = [
+				this.db.collection('stats').updateOne({date: dmy}, {$inc: inc}, {upsert: true})
+			];
+			let max = {};
+			Object.keys(lastSeen).forEach(key => {
+				max[key] = lastSeen[key];
+			});
+			if (Object.keys(max).length > 0) {
+				writes.push(this.db.collection('heartbeat').updateOne({_id: 'spots'}, {$max: max}, {upsert: true}));
+			}
+
+			Promise.all(writes).then(() => {
 				if (callback)
 					callback();
 			}).catch((err) => {
