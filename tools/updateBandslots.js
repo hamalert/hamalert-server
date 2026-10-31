@@ -67,7 +67,8 @@ async function updateBandslotsForTrigger(db, dxccIds, trigger) {
 			date
 		},
 		httpsAgent: agent,
-		validateStatus: null
+		validateStatus: null,
+		headers: {'User-Agent': config.userAgent}
 	});
 
 	if (response.status === 403 || response.data === 'Unable to validate password or app password') {

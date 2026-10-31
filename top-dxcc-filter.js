@@ -34,7 +34,7 @@ class TopDxccFilter {
 
 	_loadDxccsToIgnore() {
 		console.log('Loading most wanted list from Club Log')
-		return axios.get('https://clublog.org/mostwanted.php?api=1')
+		return axios.get('https://clublog.org/mostwanted.php?api=1', {headers: {'User-Agent': config.userAgent}})
 			.then(response => {
 				let mostWanted = []
 				for (let [key, value] of Object.entries(response.data)) {

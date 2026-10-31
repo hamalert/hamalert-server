@@ -16,7 +16,7 @@ client.connect().then(() => {
 
 function processSummitList(db) {
 	var associations = new Map();
-	axios.get(config.summitListUrl, {responseType: 'text'})
+	axios.get(config.summitListUrl, {responseType: 'text', headers: {'User-Agent': config.userAgent}})
 		.then(response => {
 			let body = response.data.substring(response.data.indexOf("\n")+1, response.data.length);
 			parse(body, {columns: true, relax_column_count: true}, function(err, summits){

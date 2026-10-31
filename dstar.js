@@ -57,8 +57,6 @@ const DstarGroupDirectory = require('./dstar_groups');
 	logic as live ones.
 */
 
-const feedUserAgent = 'HamAlert/1.0 (+https://hamalert.org)';
-
 const callsignRegex = /^[A-Z0-9]{1,3}[0-9][A-Z0-9]{0,4}$/;
 const linkCommandRegex = /^([A-Z0-9]{3,6}) {0,3}([A-Z])L$/;
 const quadnetLineRegex = /^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\s+([\d.]+)s:\s*(\d+)%:\s*([\d.]+)% (.{8})\/(.{4}) (.{8}) (.{8}) (.{8}) (.{20}) (.{8})$/;
@@ -718,7 +716,7 @@ class QuadnetFeed extends EventEmitter {
 			url: this.options.url,
 			method: 'GET',
 			headers: {
-				'User-Agent': feedUserAgent,
+				'User-Agent': config.userAgent,
 				'Range': range
 			},
 			responseType: 'arraybuffer',
@@ -884,7 +882,7 @@ class IrcddbLiveFeed extends EventEmitter {
 			return axios({
 				url,
 				method: 'GET',
-				headers: {'User-Agent': feedUserAgent},
+				headers: {'User-Agent': config.userAgent},
 				responseType: 'text',
 				timeout: this.options.timeout
 			}).then(response => response.data);
@@ -911,7 +909,7 @@ class IrcddbLiveFeed extends EventEmitter {
 					port: target.port || 80,
 					path: target.pathname + target.search,
 					method: 'GET',
-					headers: {'User-Agent': feedUserAgent, 'Host': target.host},
+					headers: {'User-Agent': config.userAgent, 'Host': target.host},
 					createConnection: () => socket,
 					timeout: this.options.timeout
 				}, res => {
@@ -981,7 +979,7 @@ class DstarusersFeed extends EventEmitter {
 		axios({
 			url: this.options.url,
 			method: 'GET',
-			headers: {'User-Agent': feedUserAgent},
+			headers: {'User-Agent': config.userAgent},
 			responseType: 'text',
 			timeout: this.options.timeout
 		})

@@ -28,7 +28,7 @@ class PotaSpotReceiver extends EventEmitter {
 		let req = axios({
 			url: config.pota.spotsUrl,
 			headers: {
-				'User-Agent': 'HamAlert/1.0 (+https://hamalert.org)'
+				'User-Agent': config.userAgent
 			},
 			responseType: 'json',
 			method: 'GET'

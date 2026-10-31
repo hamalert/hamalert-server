@@ -107,7 +107,8 @@ function processCanadaDatabase(db) {
 	axios({
 		url: config.state.canadaDatabaseUrl,
 		responseType: 'stream',
-		method: 'GET'
+		method: 'GET',
+		headers: {'User-Agent': config.userAgent}
 	})
 	.then(response => {
 		response.data

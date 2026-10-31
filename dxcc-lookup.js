@@ -61,7 +61,7 @@ class DxccLookup {
 	_loadPrefixes() {
 		console.log('Loading DXCC prefix information from Club Log')
 		let now = new Date()
-		return axios.get('https://cdn.clublog.org/cty.php', {params: {api: config.clublog.apiKey}, responseType: 'arraybuffer'})
+		return axios.get('https://cdn.clublog.org/cty.php', {params: {api: config.clublog.apiKey}, responseType: 'arraybuffer', headers: {'User-Agent': config.userAgent}})
 			.then(response => {
 				return do_gunzip(response.data)
 					.then(buf => {

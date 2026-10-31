@@ -25,10 +25,10 @@ class SotaSpotReceiver extends EventEmitter {
 	async refreshSpots() {
 		try {
 			// Check epoch first
-			let epoch = (await axios.get(config.sotaWatch.epochUrl)).data
+			let epoch = (await axios.get(config.sotaWatch.epochUrl, {headers: {'User-Agent': config.userAgent}})).data
 			if (epoch !== this.lastEpoch) {
 				console.log("Refreshing SOTAwatch JSON feed");
-				let response = await axios.get(config.sotaWatch.spotsUrl)
+				let response = await axios.get(config.sotaWatch.spotsUrl, {headers: {'User-Agent': config.userAgent}})
 				if (response.status !== 200) {
 					throw `Bad status code ${response.statusCode} from SOTAwatch`;
 				}

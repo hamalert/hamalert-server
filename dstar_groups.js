@@ -28,8 +28,6 @@ const config = require('./config_loader');
 	fetch fails while the dump was empty (a fresh install with no dump and no network yet).
 */
 
-const userAgent = 'HamAlert/1.0 (+https://hamalert.org)';
-
 function htmlUnescape(text) {
 	return text
 		.replace(/&nbsp;/gi, ' ')
@@ -199,7 +197,7 @@ class DstarGroupDirectory {
 		return axios({
 			url: this.options.url,
 			method: 'GET',
-			headers: {'User-Agent': userAgent},
+			headers: {'User-Agent': config.userAgent},
 			responseType: 'text',
 			timeout: this.options.timeout || 30000
 		})

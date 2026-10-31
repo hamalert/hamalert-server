@@ -29,7 +29,6 @@ const config = require('./config_loader');
 	without waiting for the first refresh.
 */
 
-const userAgent = 'HamAlert/1.0 (+https://hamalert.org)';
 const httpTimeout = 30000;
 
 // Both QuadNet and ircDDB publish the node/reflector field the same way: the callsign,
@@ -115,7 +114,7 @@ class DstarNodeDirectory {
 		return axios({
 			url: this.options.quadnetUrl,
 			method: 'GET',
-			headers: {'User-Agent': userAgent},
+			headers: {'User-Agent': config.userAgent},
 			responseType: 'text',
 			timeout: httpTimeout
 		})
@@ -152,7 +151,7 @@ class DstarNodeDirectory {
 		return axios({
 			url: this.options.ircddbUrl,
 			method: 'GET',
-			headers: {'User-Agent': userAgent},
+			headers: {'User-Agent': config.userAgent},
 			responseType: 'text',
 			timeout: httpTimeout
 		})
@@ -167,7 +166,7 @@ class DstarNodeDirectory {
 				url: this.options.ircddbUrl,
 				method: 'GET',
 				params: {n: total},
-				headers: {'User-Agent': userAgent},
+				headers: {'User-Agent': config.userAgent},
 				responseType: 'text',
 				timeout: httpTimeout
 			});

@@ -26,7 +26,7 @@ function processParksList(db) {
 			axios({
 				url: config.wwff.listUrl,
 				method: 'GET',
-				headers: {'User-Agent': 'Mozilla'},
+				headers: {'User-Agent': config.userAgent},
 				responseType: 'stream'
 			})
 			.then(response => {
@@ -83,7 +83,7 @@ function processParksList(db) {
 		
 		// POTA
 		(callback) => {
-			axios.get(config.pota.apiUrl + '/programs/locations')
+			axios.get(config.pota.apiUrl + '/programs/locations', {headers: {'User-Agent': config.userAgent}})
 				.then(response => {
 					let programLoads = [];
 					let seenPrefixes = new Set();
@@ -98,7 +98,7 @@ function processParksList(db) {
 						}
 						seenPrefixes.add(program.prefix);
 						programLoads.push((callback2) => {
-							axios.get(config.pota.apiUrl + '/program/parks/' + program.prefix)
+							axios.get(config.pota.apiUrl + '/program/parks/' + program.prefix, {headers: {'User-Agent': config.userAgent}})
 								.then(response2 => {
 									if (program.prefix == 'VK' && response2.data.length < 3000) {
 										callback(new Error("Bad number of VK POTA parks, expecting more than 3000"));

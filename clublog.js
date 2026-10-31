@@ -75,7 +75,8 @@ class ClubLogResolver {
 				call: callsign,
 				api: config.clublog.apiKey,
 				full: 1
-			}
+			},
+			headers: {'User-Agent': config.userAgent}
 		})
 		.then(response => {
 			let body = response.data;

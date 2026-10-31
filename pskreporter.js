@@ -25,6 +25,7 @@ class PskReporterReceiver extends EventEmitter {
 		this.resetTimer();
 		axios({
 			url: config.pskreporter.url,
+			headers: {'User-Agent': config.userAgent},
 			timeout: config.pskreporter.timeout,
 			responseType: 'stream',
 			signal: this.abortController.signal,

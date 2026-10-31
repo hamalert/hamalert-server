@@ -17,7 +17,7 @@ client.connect().then(() => {
 });
 
 function processLotwUserList(db) {	
-	axios.get(config.lotw.userListUrl, {responseType: 'text'})
+	axios.get(config.lotw.userListUrl, {responseType: 'text', headers: {'User-Agent': config.userAgent}})
 		.then(response => {
 			parse(response.data, {columns: ['callsign', 'date', 'time']}, function(err, users) {
 				assert.equal(err, null);

@@ -56,7 +56,7 @@ class URLNotifier extends Notifier {
 			url: user.notificationUrl,
 			method: (user.notificationMethod === 'POST-JSON' ? 'POST' : user.notificationMethod),
 			headers: {
-				'User-Agent': 'HamAlert/1.0 (+https://hamalert.org)'
+				'User-Agent': config.userAgent
 			},
 			// Resolve the name ourselves and refuse non-public addresses. Axios
 			// reuses this function for redirects. proxy:false keeps the check on

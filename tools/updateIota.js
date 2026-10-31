@@ -17,7 +17,7 @@ async function processIotaList(db) {
 	var parks = [];
 	var divisions = new Map();
 	
-	let response = await axios.get(config.iotaListUrl);
+	let response = await axios.get(config.iotaListUrl, {headers: {'User-Agent': config.userAgent}});
 	
 	// Loop through groups
 	let iotaGroups = [];

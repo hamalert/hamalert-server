@@ -14,7 +14,7 @@ client.connect().then(() => {
 });
 
 function processEqslUserList(db) {	
-	axios.get(config.eqsl.userListUrl, {responseType: 'text'})
+	axios.get(config.eqsl.userListUrl, {responseType: 'text', headers: {'User-Agent': config.userAgent}})
 		.then(response => {
 			let body = response.data;
 			let callsigns = body.split(/\r?\n/).slice(1);

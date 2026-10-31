@@ -27,7 +27,7 @@ function processSummitList(db) {
 	
 	async.series([
 		cb => {
-			axios.get(config.gma.summitListUrl, {responseType: 'text'})
+			axios.get(config.gma.summitListUrl, {responseType: 'text', headers: {'User-Agent': config.userAgent}})
 				.then(response => {
 					body = response.data.substring(response.data.indexOf("\n")+1, response.data.length);
 					// Fix anomaly

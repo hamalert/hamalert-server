@@ -2,6 +2,8 @@ var config = {};
 
 // Sanitized config with API keys, passwords etc. removed, not for use in production
 
+config.userAgent = 'HamAlert/1.0 (+https://hamalert.org)';
+
 config.sotaWatch = {
 	spotsUrl: 'https://api-db2.sota.org.uk/api/spots/50/all/all',
 	epochUrl: 'https://api-db2.sota.org.uk/api/spots/epoch',

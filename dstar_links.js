@@ -1,6 +1,7 @@
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const config = require('./config_loader');
 
 /*
 	D-STAR reflector link directory
@@ -46,8 +47,6 @@ const path = require('path');
 	Like dstar_nodes.js, the merged map is persisted to options.dumpFile so a restart has data
 	immediately, without waiting for the first refresh.
 */
-
-const userAgent = 'HamAlert/1.0 (+https://hamalert.org)';
 
 const moduleHeaderTexts = ['MODULE A', 'MODULE B', 'MODULE C', 'MODULE D', 'MODULE E'];
 
@@ -208,7 +207,7 @@ function httpGet(url, timeout, responseType) {
 	return axios({
 		url,
 		method: 'GET',
-		headers: {'User-Agent': userAgent},
+		headers: {'User-Agent': config.userAgent},
 		responseType,
 		timeout
 	}).then(response => response.data);
